@@ -13,7 +13,7 @@ import (
 func main() {
 	traceloop := sdk.NewTraceloop(config.Config{
 		BaseURL: "https://api-staging.traceloop.com",
-		APIKey: "8baf29af6319a086ce3a4598fdebe8e51c4339fdbc6e16eaa4cb9cff2f4c055b01705a38cf0242e3813c3d41caa3653f",
+		APIKey: os.Getenv("TRACELOOP_API_KEY"),
 	})
 
 	traceloop.Initialize()
