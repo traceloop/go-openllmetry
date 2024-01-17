@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	traceloop := sdk.NewTraceloop(config.Config{
+	traceloop := sdk.NewClient(config.Config{
 		BaseURL: "https://api-staging.traceloop.com",
 		APIKey: os.Getenv("TRACELOOP_API_KEY"),
 	})

@@ -1,4 +1,4 @@
-package sdk
+package traceloop
 
 import (
 	"encoding/json"
@@ -23,7 +23,7 @@ type Traceloop struct {
     http.Client
 }
 
-func NewTraceloop(config config.Config) *Traceloop {
+func NewClient(config config.Config) *Traceloop {
 	return &Traceloop{
 		Config:         config,
 		PromptRegistry: make(model.PromptRegistry),
@@ -31,34 +31,34 @@ func NewTraceloop(config config.Config) *Traceloop {
 	}
 }
 
-func (sdk *Traceloop) Initialize() {
-	sdk.PromptRegistry = make(model.PromptRegistry)
+func (instance *Traceloop) Initialize() {
+	instance.PromptRegistry = make(model.PromptRegistry)
 
-	if sdk.Config.BaseURL == "" {
+	if instance.Config.BaseURL == "" {
 		baseUrl := os.Getenv("TRACELOOP_BASE_URL")
 		if baseUrl == "" {		
-			sdk.Config.BaseURL = "https://api.traceloop.com"
+			instance.Config.BaseURL = "https://api.traceloop.com"
 		} else {
-			sdk.Config.BaseURL = baseUrl
+			instance.Config.BaseURL = baseUrl
 		}
 	}
 
-	if sdk.Config.PollingInterval == 0 {
+	if instance.Config.PollingInterval == 0 {
 		pollingInterval := os.Getenv("TRACELOOP_SECONDS_POLLING_INTERVAL")
 		if pollingInterval == "" {
-			sdk.Config.PollingInterval = 5 * time.Second
+			instance.Config.PollingInterval = 5 * time.Second
 		} else {
-			sdk.Config.PollingInterval, _ = time.ParseDuration(pollingInterval)
+			instance.Config.PollingInterval, _ = time.ParseDuration(pollingInterval)
 		}
 	}
 
-	fmt.Printf("Traceloop %s SDK initialized. Connecting to %s\n", sdk.GetVersion(), sdk.Config.BaseURL)
+	fmt.Printf("Traceloop %s SDK initialized. Connecting to %s\n", instance.GetVersion(), instance.Config.BaseURL)
 
-	sdk.pollPrompts()
+	instance.pollPrompts()
 }
 
-func (sdk *Traceloop) populatePromptRegistry() {
-	resp, err := sdk.fetchPathWithRetry(PromptsPath, sdk.Config.BackoffConfig.MaxRetries)
+func (instance *Traceloop) populatePromptRegistry() {
+	resp, err := instance.fetchPathWithRetry(PromptsPath, instance.Config.BackoffConfig.MaxRetries)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -73,40 +73,40 @@ func (sdk *Traceloop) populatePromptRegistry() {
 	}
 
 	for _, prompt := range response.Prompts {
-		sdk.PromptRegistry[prompt.Key] = &prompt
+		instance.PromptRegistry[prompt.Key] = &prompt
 	}
 }
 
-func (sdk *Traceloop) pollPrompts() {
+func (instance *Traceloop) pollPrompts() {
 	prompts := make(chan []model.Prompt)
     errs := make(chan error)
 
-	sdk.populatePromptRegistry()
+	instance.populatePromptRegistry()
 
 go func() {
 	defer close(prompts)
 	defer close(errs)
 
-	ticker := time.NewTicker(sdk.Config.PollingInterval)
+	ticker := time.NewTicker(instance.Config.PollingInterval)
 
 	for range ticker.C {
-		sdk.populatePromptRegistry()
+		instance.populatePromptRegistry()
 	}
 }()
 }
 
-func (sdk *Traceloop) getPromptVersion(key string) (*model.PromptVersion, error) {
-	if sdk.PromptRegistry[key] == nil {
+func (instance *Traceloop) getPromptVersion(key string) (*model.PromptVersion, error) {
+	if instance.PromptRegistry[key] == nil {
 		return nil, fmt.Errorf("prompt with key %s not found", key)
 	}
 
-	if sdk.PromptRegistry[key].Target.Version == "" {
+	if instance.PromptRegistry[key].Target.Version == "" {
 		return nil, fmt.Errorf("prompt with key %s has no version", key)
 	}
 
 	var promptVersion model.PromptVersion
-	for _, version := range sdk.PromptRegistry[key].Versions {
-		if version.Id == sdk.PromptRegistry[key].Target.Version {
+	for _, version := range instance.PromptRegistry[key].Versions {
+		if version.Id == instance.PromptRegistry[key].Target.Version {
 			promptVersion = version
 		}
 	}
@@ -118,8 +118,8 @@ func (sdk *Traceloop) getPromptVersion(key string) (*model.PromptVersion, error)
 	return &promptVersion, nil
 }
 
-func (sdk *Traceloop) GetOpenAIChatCompletionRequest(key string, variables map[string]any) (*openai.ChatCompletionRequest, error) {
-	promptVersion, err := sdk.getPromptVersion(key)
+func (instance *Traceloop) GetOpenAIChatCompletionRequest(key string, variables map[string]any) (*openai.ChatCompletionRequest, error) {
+	promptVersion, err := instance.getPromptVersion(key)
 	if err != nil {
 		return nil, err
 	}
