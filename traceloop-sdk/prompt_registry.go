@@ -23,7 +23,7 @@ func (instance *Traceloop) populatePromptRegistry() {
 	var response dto.PromptsResponse
 	err = decoder.Decode(&response)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("Failed to decode response", err)
 	}
 
 	for _, prompt := range response.Prompts {
