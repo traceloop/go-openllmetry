@@ -37,16 +37,16 @@ func (instance *Traceloop) pollPrompts() {
 
 	instance.populatePromptRegistry()
 
-go func() {
-	defer close(prompts)
-	defer close(errs)
+	go func() {
+		defer close(prompts)
+		defer close(errs)
 
-	ticker := time.NewTicker(instance.config.PollingInterval)
+		ticker := time.NewTicker(instance.config.PollingInterval)
 
-	for range ticker.C {
-		instance.populatePromptRegistry()
-	}
-}()
+		for range ticker.C {
+			instance.populatePromptRegistry()
+		}
+	}()
 }
 
 func (instance *Traceloop) getPromptVersion(key string) (*model.PromptVersion, error) {

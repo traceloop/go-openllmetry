@@ -8,7 +8,8 @@ import (
 	"time"
 
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/sdk/trace"
+	apitrace "go.opentelemetry.io/otel/trace"
 
 	semconvai "github.com/traceloop/go-openllmetry/semconv-ai"
 	"github.com/traceloop/go-openllmetry/traceloop-sdk/config"
@@ -21,7 +22,7 @@ const PromptsPath = "/v1/traceloop/prompts"
 type Traceloop struct {
     config            config.Config
     promptRegistry    model.PromptRegistry
-	tracer    		  trace.Tracer
+	tracerProvider    *trace.TracerProvider
     http.Client
 }
 
@@ -54,52 +55,50 @@ func (instance *Traceloop) Initialize(ctx context.Context) {
 
 	fmt.Printf("Traceloop %s SDK initialized. Connecting to %s\n", instance.GetVersion(), instance.config.BaseURL)
 
-	instance.initTracer(ctx, "GoExampleService")
 	instance.pollPrompts()
+	instance.initTracer(ctx, "GoExampleService")
 }
 
-func (instance *Traceloop) LogPrompt(ctx context.Context, prompt dto.Prompt, completion dto.Completion, traceloopAttrs dto.TraceloopAttributes) error {
-	spanName := fmt.Sprintf("%s.%s", prompt.Vendor, prompt.Mode)
-	_, span := instance.tracer.Start(ctx, spanName)
+func setMessagesAttribute(span *apitrace.Span, prefix string, messages []dto.Message) {
+	for _, message := range messages {
+		attrsPrefix := fmt.Sprintf("%s.%d", prefix, message.Index)
+		(*span).SetAttributes(
+			attribute.KeyValue{
+				Key:   attribute.Key(attrsPrefix + ".content"),
+				Value: attribute.StringValue(message.Content),
+			},
+			attribute.KeyValue{
+				Key:   attribute.Key(attrsPrefix + ".role"),
+				Value: attribute.StringValue(message.Role),
+			},
+		)
+	}
+}
+
+func (instance *Traceloop) LogPrompt(ctx context.Context, attrs dto.PromptLogAttributes) error {
+	spanName := fmt.Sprintf("%s.%s", attrs.Prompt.Vendor, attrs.Prompt.Mode)
+	_, span := (*instance.tracerProvider).Tracer(os.Args[0]).Start(ctx, spanName)
 	
 	span.SetAttributes(
-		semconvai.LLMVendor.String(prompt.Vendor),
-		semconvai.LLMRequestModel.String(prompt.Model),
-		semconvai.LLMRequestType.String(prompt.Mode),
-		semconvai.LLMResponseModel.String(completion.Model),
-		semconvai.TraceloopWorkflowName.String(traceloopAttrs.WorkflowName),
-		semconvai.TraceloopEntityName.String(traceloopAttrs.EntityName),
+		semconvai.LLMVendor.String(attrs.Prompt.Vendor),
+		semconvai.LLMRequestModel.String(attrs.Prompt.Model),
+		semconvai.LLMRequestType.String(attrs.Prompt.Mode),
+		semconvai.LLMResponseModel.String(attrs.Completion.Model),
+		semconvai.LLMUsageTotalTokens.Int(attrs.Usage.TotalTokens),
+		semconvai.LLMUsageCompletionTokens.Int(attrs.Usage.CompletionTokens),
+		semconvai.LLMUsagePromptTokens.Int(attrs.Usage.PromptTokens),
+		semconvai.TraceloopWorkflowName.String(attrs.Traceloop.WorkflowName),
+		semconvai.TraceloopEntityName.String(attrs.Traceloop.EntityName),
 	)
 
-	for _, message := range prompt.Messages {
-		attrsPrefix := fmt.Sprintf("llm.prompts.%d", message.Index)
-		span.SetAttributes(
-			attribute.KeyValue{
-				Key:   attribute.Key(attrsPrefix + ".content"),
-				Value: attribute.StringValue(message.Content),
-			},
-			attribute.KeyValue{
-				Key:   attribute.Key(attrsPrefix + ".role"),
-				Value: attribute.StringValue(message.Role),
-			},
-		)
-	}
-
-	for _, message := range completion.Messages {
-		attrsPrefix := fmt.Sprintf("llm.completions.%d", message.Index)
-		span.SetAttributes(
-			attribute.KeyValue{
-				Key:   attribute.Key(attrsPrefix + ".content"),
-				Value: attribute.StringValue(message.Content),
-			},
-			attribute.KeyValue{
-				Key:   attribute.Key(attrsPrefix + ".role"),
-				Value: attribute.StringValue(message.Role),
-			},
-		)
-	}
+	setMessagesAttribute(&span, "llm.prompts", attrs.Prompt.Messages)
+	setMessagesAttribute(&span, "llm.completions", attrs.Completion.Messages)
 
 	defer span.End()
 
 	return nil
+}
+
+func (instance *Traceloop) Shutdown(ctx context.Context) {
+	instance.tracerProvider.Shutdown(ctx)
 }
