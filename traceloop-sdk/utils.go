@@ -19,12 +19,12 @@ func (instance *Traceloop) GetVersion() string {
 }
 
 func (instance *Traceloop) fetchPath(path string) (*http.Response, error) {
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/%s", instance.Config.BaseURL, path), nil)
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("https://%s/%s", instance.config.BaseURL, path), nil)
 	if err != nil {
 		return nil, err
 	}
 
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", instance.Config.APIKey))
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", instance.config.APIKey))
 	req.Header.Set("X-Traceloop-SDK-Version", instance.GetVersion())
 
 	return instance.Client.Do(req)
