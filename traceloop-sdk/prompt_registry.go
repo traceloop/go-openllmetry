@@ -14,7 +14,7 @@ import (
 func (instance *Traceloop) populatePromptRegistry() {
 	resp, err := instance.fetchPathWithRetry(PromptsPath, instance.config.BackoffConfig.MaxRetries)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("Failed to fetch prompts", err)
 		return
 	}
 	defer resp.Body.Close()
@@ -24,6 +24,7 @@ func (instance *Traceloop) populatePromptRegistry() {
 	err = decoder.Decode(&response)
 	if err != nil {
 		fmt.Println("Failed to decode response", err)
+		return
 	}
 
 	for _, prompt := range response.Prompts {
