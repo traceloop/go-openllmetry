@@ -12,7 +12,6 @@ import (
 	apitrace "go.opentelemetry.io/otel/trace"
 
 	semconvai "github.com/traceloop/go-openllmetry/semconv-ai"
-	"github.com/traceloop/go-openllmetry/traceloop-sdk/dto"
 	"github.com/traceloop/go-openllmetry/traceloop-sdk/model"
 )
 
@@ -70,7 +69,7 @@ func (instance *Traceloop) initialize(ctx context.Context) error {
 	return nil
 }
 
-func setMessagesAttribute(span apitrace.Span, prefix string, messages []dto.Message) {
+func setMessagesAttribute(span apitrace.Span, prefix string, messages []Message) {
 	for _, message := range messages {
 		attrsPrefix := fmt.Sprintf("%s.%d", prefix, message.Index)
 		span.SetAttributes(
@@ -80,7 +79,7 @@ func setMessagesAttribute(span apitrace.Span, prefix string, messages []dto.Mess
 	}
 }
 
-func (instance *Traceloop) LogPrompt(ctx context.Context, attrs dto.PromptLogAttributes) error {
+func (instance *Traceloop) LogPrompt(ctx context.Context, attrs PromptLogAttributes) error {
 	spanName := fmt.Sprintf("%s.%s", attrs.Prompt.Vendor, attrs.Prompt.Mode)
 	_, span := (*instance.tracerProvider).Tracer(os.Args[0]).Start(ctx, spanName)
 	

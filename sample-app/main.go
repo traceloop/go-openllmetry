@@ -8,7 +8,6 @@ import (
 
 	"github.com/sashabaranov/go-openai"
 	tlp "github.com/traceloop/go-openllmetry/traceloop-sdk"
-	"github.com/traceloop/go-openllmetry/traceloop-sdk/dto"
 )
 
 func main() {
@@ -44,16 +43,16 @@ func main() {
 	fmt.Println(resp.Choices[0].Message.Content)
 
 
-	log := dto.PromptLogAttributes{
-		Prompt: dto.Prompt{
+	log := tlp.PromptLogAttributes{
+		Prompt: tlp.Prompt{
 			Vendor: "openai",
 			Mode:   "chat",
 			Model: request.Model,
 		},
-		Completion: dto.Completion{
+		Completion: tlp.Completion{
 			Model: resp.Model,
 		},
-		Usage: dto.Usage{
+		Usage: tlp.Usage{
 			TotalTokens: resp.Usage.TotalTokens,
 			CompletionTokens: resp.Usage.CompletionTokens,
 			PromptTokens: resp.Usage.PromptTokens,
@@ -61,7 +60,7 @@ func main() {
 	}	
 
 	for i, message := range request.Messages {
-		log.Prompt.Messages = append(log.Prompt.Messages, dto.Message{
+		log.Prompt.Messages = append(log.Prompt.Messages, tlp.Message{
 			Index:   i,
 			Content: message.Content,
 			Role:    message.Role,
@@ -69,7 +68,7 @@ func main() {
 	}
 
 	for _, choice := range resp.Choices {
-		log.Completion.Messages = append(log.Completion.Messages, dto.Message{
+		log.Completion.Messages = append(log.Completion.Messages, tlp.Message{
 			Index:   choice.Index,
 			Content: choice.Message.Content,
 			Role:    choice.Message.Role,
