@@ -59,10 +59,10 @@ func (instance *Traceloop) Initialize(ctx context.Context) {
 	instance.initTracer(ctx, "GoExampleService")
 }
 
-func setMessagesAttribute(span *apitrace.Span, prefix string, messages []dto.Message) {
+func setMessagesAttribute(span apitrace.Span, prefix string, messages []dto.Message) {
 	for _, message := range messages {
 		attrsPrefix := fmt.Sprintf("%s.%d", prefix, message.Index)
-		(*span).SetAttributes(
+		span.SetAttributes(
 			attribute.KeyValue{
 				Key:   attribute.Key(attrsPrefix + ".content"),
 				Value: attribute.StringValue(message.Content),
@@ -91,8 +91,8 @@ func (instance *Traceloop) LogPrompt(ctx context.Context, attrs dto.PromptLogAtt
 		semconvai.TraceloopEntityName.String(attrs.Traceloop.EntityName),
 	)
 
-	setMessagesAttribute(&span, "llm.prompts", attrs.Prompt.Messages)
-	setMessagesAttribute(&span, "llm.completions", attrs.Completion.Messages)
+	setMessagesAttribute(span, "llm.prompts", attrs.Prompt.Messages)
+	setMessagesAttribute(span, "llm.completions", attrs.Completion.Messages)
 
 	defer span.End()
 
