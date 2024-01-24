@@ -26,15 +26,19 @@ type Traceloop struct {
     http.Client
 }
 
-func NewClient(config config.Config) *Traceloop {
-	return &Traceloop{
+func NewClient(ctx context.Context, config config.Config) *Traceloop {
+	instance := Traceloop{
 		config:         config,
 		promptRegistry: make(model.PromptRegistry),
 		Client:         http.Client{},
 	}
+
+	instance.initialize(ctx)
+
+	return &instance
 }
 
-func (instance *Traceloop) Initialize(ctx context.Context) {
+func (instance *Traceloop) initialize(ctx context.Context) {
 	if instance.config.BaseURL == "" {
 		baseUrl := os.Getenv("TRACELOOP_BASE_URL")
 		if baseUrl == "" {		

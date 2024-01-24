@@ -15,14 +15,11 @@ import (
 func main() {
 	ctx := context.Background()
 
-	traceloop := sdk.NewClient(config.Config{
+	traceloop := sdk.NewClient(ctx, config.Config{
 		BaseURL: "api-staging.traceloop.com",
 		APIKey: os.Getenv("TRACELOOP_API_KEY"),
 	})
 	defer func() { traceloop.Shutdown(ctx) }()
-
-	traceloop.Initialize(ctx)
-
 
 	request, err := traceloop.GetOpenAIChatCompletionRequest("example-prompt", map[string]interface{}{ "date": time.Now().Format("01/02") })
 	if err != nil {
