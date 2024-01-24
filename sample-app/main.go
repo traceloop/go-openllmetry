@@ -7,18 +7,22 @@ import (
 	"time"
 
 	"github.com/sashabaranov/go-openai"
-	sdk "github.com/traceloop/go-openllmetry/traceloop-sdk"
-	"github.com/traceloop/go-openllmetry/traceloop-sdk/config"
+	tlp "github.com/traceloop/go-openllmetry/traceloop-sdk"
 	"github.com/traceloop/go-openllmetry/traceloop-sdk/dto"
 )
 
 func main() {
 	ctx := context.Background()
 
-	traceloop := sdk.NewClient(ctx, config.Config{
+	traceloop, err := tlp.NewClient(ctx, tlp.Config{
 		APIKey: os.Getenv("TRACELOOP_API_KEY"),
 	})
 	defer func() { traceloop.Shutdown(ctx) }()
+
+	if err != nil {
+		fmt.Printf("NewClient error: %v\n", err)
+		return
+	}
 
 	request, err := traceloop.GetOpenAIChatCompletionRequest("example-prompt", map[string]interface{}{ "date": time.Now().Format("01/02") })
 	if err != nil {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"go.opentelemetry.io/otel"
 	otlp "go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	otlpclient "go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -45,17 +44,13 @@ func newTracerProvider(ctx context.Context, serviceName string, exp trace.SpanEx
 func (instance *Traceloop) initTracer(ctx context.Context, serviceName string) error {
 	exp, err := newOtlpExporter(ctx, instance.config.BaseURL, instance.config.APIKey)
 	if err != nil {
-		fmt.Printf("Failed to create otlp exporter: %v\n", err)
-		return err
+		return fmt.Errorf("create otlp exporter: %w", err)
 	}
 	
 	tp, err := newTracerProvider(ctx, serviceName, exp)
 	if err != nil {
-		fmt.Printf("Failed to create tracer provider: %v\n", err)
-		return err
+		return fmt.Errorf("create tracer provider: %w", err)
 	}
-
-	otel.SetTracerProvider(tp)
 
 	instance.tracerProvider = tp
 

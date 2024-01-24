@@ -12,7 +12,6 @@ import (
 	apitrace "go.opentelemetry.io/otel/trace"
 
 	semconvai "github.com/traceloop/go-openllmetry/semconv-ai"
-	"github.com/traceloop/go-openllmetry/traceloop-sdk/config"
 	"github.com/traceloop/go-openllmetry/traceloop-sdk/dto"
 	"github.com/traceloop/go-openllmetry/traceloop-sdk/model"
 )
@@ -20,25 +19,28 @@ import (
 const PromptsPath = "/v1/traceloop/prompts"
 
 type Traceloop struct {
-    config            config.Config
+    config            Config
     promptRegistry    model.PromptRegistry
 	tracerProvider    *trace.TracerProvider
     http.Client
 }
 
-func NewClient(ctx context.Context, config config.Config) *Traceloop {
+func NewClient(ctx context.Context, config Config) (*Traceloop, error) {
 	instance := Traceloop{
 		config:         config,
 		promptRegistry: make(model.PromptRegistry),
 		Client:         http.Client{},
 	}
 
-	instance.initialize(ctx)
+	err := instance.initialize(ctx)
+	if err != nil {
+		return nil, err
+	}
 
-	return &instance
+	return &instance, nil
 }
 
-func (instance *Traceloop) initialize(ctx context.Context) {
+func (instance *Traceloop) initialize(ctx context.Context) error {
 	if instance.config.BaseURL == "" {
 		baseUrl := os.Getenv("TRACELOOP_BASE_URL")
 		if baseUrl == "" {		
@@ -60,21 +62,20 @@ func (instance *Traceloop) initialize(ctx context.Context) {
 	fmt.Printf("Traceloop %s SDK initialized. Connecting to %s\n", instance.GetVersion(), instance.config.BaseURL)
 
 	instance.pollPrompts()
-	instance.initTracer(ctx, "GoExampleService")
+	err := instance.initTracer(ctx, "traceloop")
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func setMessagesAttribute(span apitrace.Span, prefix string, messages []dto.Message) {
 	for _, message := range messages {
 		attrsPrefix := fmt.Sprintf("%s.%d", prefix, message.Index)
 		span.SetAttributes(
-			attribute.KeyValue{
-				Key:   attribute.Key(attrsPrefix + ".content"),
-				Value: attribute.StringValue(message.Content),
-			},
-			attribute.KeyValue{
-				Key:   attribute.Key(attrsPrefix + ".role"),
-				Value: attribute.StringValue(message.Role),
-			},
+			attribute.String(attrsPrefix + ".content", message.Content),
+			attribute.String(attrsPrefix + ".role", message.Role),
 		)
 	}
 }
