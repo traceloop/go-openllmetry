@@ -24,7 +24,7 @@ func newOtlpExporter(ctx context.Context, endpoint string, apiKey string) (*otlp
 	)
 }
 
-func newTracerProvider(ctx context.Context, serviceName string, exp trace.SpanExporter) *trace.TracerProvider {
+func newTracerProvider(ctx context.Context, serviceName string, exp trace.SpanExporter) (*trace.TracerProvider, error) {
 	r, err := resource.New(
 		ctx,
 		resource.WithAttributes(
@@ -33,22 +33,26 @@ func newTracerProvider(ctx context.Context, serviceName string, exp trace.SpanEx
 	)
 
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	return trace.NewTracerProvider(
 		trace.WithBatcher(exp),
 		trace.WithResource(r),
-	)
+	), nil
 }
 
 func (instance *Traceloop) initTracer(ctx context.Context, serviceName string) error {
 	exp, err := newOtlpExporter(ctx, instance.config.BaseURL, instance.config.APIKey)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	
-	tp := newTracerProvider(ctx, serviceName, exp)
+	tp, err := newTracerProvider(ctx, serviceName, exp)
+	if err != nil {
+		return err
+	}
+
 	otel.SetTracerProvider(tp)
 
 	instance.tracerProvider = tp
