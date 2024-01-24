@@ -71,13 +71,10 @@ import (
 func main() {
     ctx := context.Background()
 
-    traceloop := sdk.NewClient(config.Config{
-		BaseURL: "api.traceloop.com",
+    traceloop := sdk.NewClient(ctx, config.Config{
 		APIKey: os.Getenv("TRACELOOP_API_KEY"),
 	})
 	defer func() { traceloop.Shutdown(ctx) }()
-
-    traceloop.Initialize(ctx)
 }
 ```
 
@@ -122,13 +119,10 @@ func main() {
 	ctx := context.Background()
 
 	// Initialize Traceloop
-	traceloop := sdk.NewClient(config.Config{
-		BaseURL: "api.traceloop.com",
+	traceloop := sdk.NewClient(ctx, config.Config{
 		APIKey:  os.Getenv("TRACELOOP_API_KEY"),
 	})
 	defer func() { traceloop.Shutdown(ctx) }()
-
-	traceloop.Initialize(ctx)
 
 	// Call OpenAI like you normally would
 	resp, err := client.CreateChatCompletion(
