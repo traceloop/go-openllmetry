@@ -105,5 +105,7 @@ func (instance *Traceloop) LogPrompt(ctx context.Context, attrs dto.PromptLogAtt
 }
 
 func (instance *Traceloop) Shutdown(ctx context.Context) {
-	instance.tracerProvider.Shutdown(ctx)
+	if instance.tracerProvider != nil{
+		instance.tracerProvider.Shutdown(ctx)	
+	}
 }

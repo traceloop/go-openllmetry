@@ -53,7 +53,7 @@ For a complete guide, go to our [docs](https://traceloop.com/docs/openllmetry/ge
 Install the SDK:
 
 ```bash
-go get traceloop-sdk
+go get github.com/traceloop/go-openllmetry/traceloop-sdk
 ```
 
 Then, initialize the SDK in your code:
