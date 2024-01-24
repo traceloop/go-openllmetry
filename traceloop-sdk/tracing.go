@@ -45,11 +45,13 @@ func newTracerProvider(ctx context.Context, serviceName string, exp trace.SpanEx
 func (instance *Traceloop) initTracer(ctx context.Context, serviceName string) error {
 	exp, err := newOtlpExporter(ctx, instance.config.BaseURL, instance.config.APIKey)
 	if err != nil {
+		fmt.Printf("Failed to create otlp exporter: %v\n", err)
 		return err
 	}
 	
 	tp, err := newTracerProvider(ctx, serviceName, exp)
 	if err != nil {
+		fmt.Printf("Failed to create tracer provider: %v\n", err)
 		return err
 	}
 
