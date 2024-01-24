@@ -42,7 +42,7 @@ func (instance *Traceloop) initialize(ctx context.Context) {
 	if instance.config.BaseURL == "" {
 		baseUrl := os.Getenv("TRACELOOP_BASE_URL")
 		if baseUrl == "" {		
-			instance.config.BaseURL = "https://api.traceloop.com"
+			instance.config.BaseURL = "api.traceloop.com"
 		} else {
 			instance.config.BaseURL = baseUrl
 		}
