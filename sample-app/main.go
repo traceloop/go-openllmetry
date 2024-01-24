@@ -16,7 +16,6 @@ func main() {
 	ctx := context.Background()
 
 	traceloop := sdk.NewClient(ctx, config.Config{
-		BaseURL: "api-staging.traceloop.com",
 		APIKey: os.Getenv("TRACELOOP_API_KEY"),
 	})
 	defer func() { traceloop.Shutdown(ctx) }()
