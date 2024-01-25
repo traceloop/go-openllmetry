@@ -66,7 +66,7 @@ func newGenericExporter(ctx context.Context) (*otlp.Exporter, error) {
 		)
 	} else {
 		// Not supporting http/json for now
-		return nil, fmt.Errorf("invalid OTLP exporter type: %s")
+		return nil, fmt.Errorf("invalid OTLP exporter type")
 	}
 }
 

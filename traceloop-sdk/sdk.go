@@ -106,6 +106,7 @@ func (instance *Traceloop) LogPrompt(ctx context.Context, attrs PromptLogAttribu
 	setMessagesAttribute(span, "llm.prompts", attrs.Prompt.Messages)
 	setMessagesAttribute(span, "llm.completions", attrs.Completion.Messages)
 
+
 	defer span.End()
 
 	return nil
