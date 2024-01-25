@@ -58,10 +58,10 @@ func (instance *Traceloop) initialize(ctx context.Context) error {
 		}
 	}
 
-	fmt.Printf("Traceloop %s SDK initialized. Connecting to %s\n", instance.GetVersion(), instance.config.BaseURL)
+	fmt.Printf("Traceloop %s SDK initialized. Connecting to %s\n", Version(), instance.config.BaseURL)
 
 	instance.pollPrompts()
-	err := instance.initTracer(ctx, "traceloop")
+	err := instance.initTracer(ctx, instance.config.ServiceName)
 	if err != nil {
 		return err
 	}
@@ -79,9 +79,17 @@ func setMessagesAttribute(span apitrace.Span, prefix string, messages []Message)
 	}
 }
 
+func (instance *Traceloop) tracerName() string {
+	if instance.config.TracerName != "" {
+		return instance.config.TracerName
+	} else {
+		return "traceloop.tracer"
+	} 
+}
+
 func (instance *Traceloop) LogPrompt(ctx context.Context, attrs PromptLogAttributes) error {
 	spanName := fmt.Sprintf("%s.%s", attrs.Prompt.Vendor, attrs.Prompt.Mode)
-	_, span := (*instance.tracerProvider).Tracer(os.Args[0]).Start(ctx, spanName)
+	_, span := (*instance.tracerProvider).Tracer(instance.tracerName()).Start(ctx, spanName)
 	
 	span.SetAttributes(
 		semconvai.LLMVendor.String(attrs.Prompt.Vendor),
