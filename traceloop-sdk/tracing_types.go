@@ -34,11 +34,3 @@ type Usage struct {
 	CompletionTokens 	int 					`json:"completion_tokens"`
 	PromptTokens 		int 					`json:"prompt_tokens"`
 }
-
-type PromptLogAttributes struct {
-	Prompt 				Prompt 					`json:"prompt"`
-	Completion 			Completion 				`json:"completion"`
-	Traceloop 			TraceloopAttributes 	`json:"traceloop"`
-	Usage 				Usage 					`json:"usage"`
-	Duration 			int 					`json:"duration"`
-}

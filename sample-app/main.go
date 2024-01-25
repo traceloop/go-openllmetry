@@ -29,52 +29,58 @@ func main() {
 		fmt.Printf("GetOpenAIChatCompletionRequest error: %v\n", err)
 		return
 	}
-	
-	client := openai.NewClient(os.Getenv("OPENAI_API_KEY"))
-	resp, err := client.CreateChatCompletion(
-		context.Background(),
-		*request,
-	)
 
-	if err != nil {
-		fmt.Printf("ChatCompletion error: %v\n", err)
-		return
-	}
-
-	fmt.Println(resp.Choices[0].Message.Content)
-
-
-	log := tlp.PromptLogAttributes{
-		Prompt: tlp.Prompt{
-			Vendor: "openai",
-			Mode:   "chat",
-			Model: request.Model,
-		},
-		Completion: tlp.Completion{
-			Model: resp.Model,
-		},
-		Usage: tlp.Usage{
-			TotalTokens: resp.Usage.TotalTokens,
-			CompletionTokens: resp.Usage.CompletionTokens,
-			PromptTokens: resp.Usage.PromptTokens,
-		},
-	}	
-
+	var promptMsgs []tlp.Message
 	for i, message := range request.Messages {
-		log.Prompt.Messages = append(log.Prompt.Messages, tlp.Message{
+		promptMsgs = append(promptMsgs, tlp.Message{
 			Index:   i,
 			Content: message.Content,
 			Role:    message.Role,
 		})
 	}
 
+	llmSpan, _ := traceloop.LogPrompt(
+		ctx, 
+		tlp.Prompt{
+			Vendor: "openai",
+			Mode:   "chat",
+			Model: request.Model,
+			Messages: promptMsgs,
+		},
+		tlp.TraceloopAttributes{
+			WorkflowName: "example-workflow",
+			EntityName:   "example-entity",
+		},
+	)
+
+	client := openai.NewClient(os.Getenv("OPENAI_API_KEY"))
+	resp, err := client.CreateChatCompletion(
+		context.Background(),
+		*request,
+	)
+	if err != nil {
+		fmt.Printf("ChatCompletion error: %v\n", err)
+		return
+	}
+
+	var completionMsgs []tlp.Message
 	for _, choice := range resp.Choices {
-		log.Completion.Messages = append(log.Completion.Messages, tlp.Message{
+		completionMsgs = append(completionMsgs, tlp.Message{
 			Index:   choice.Index,
 			Content: choice.Message.Content,
 			Role:    choice.Message.Role,
 		})
 	}
 
-	traceloop.LogPrompt(ctx, log)
+	llmSpan.LogCompletion(ctx, tlp.Completion{
+		Model:    resp.Model,
+		Messages: completionMsgs,
+	}, tlp.Usage{
+		TotalTokens:       resp.Usage.TotalTokens,
+		CompletionTokens:  resp.Usage.CompletionTokens,
+		PromptTokens:      resp.Usage.PromptTokens,
+	})
+
+
+	fmt.Println(resp.Choices[0].Message.Content)
 }

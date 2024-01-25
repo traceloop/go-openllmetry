@@ -24,6 +24,10 @@ type Traceloop struct {
     http.Client
 }
 
+type LLMSpan struct {
+	span apitrace.Span
+}
+
 func NewClient(ctx context.Context, config Config) (*Traceloop, error) {
 	instance := Traceloop{
 		config:         config,
@@ -87,27 +91,36 @@ func (instance *Traceloop) tracerName() string {
 	} 
 }
 
-func (instance *Traceloop) LogPrompt(ctx context.Context, attrs PromptLogAttributes) error {
-	spanName := fmt.Sprintf("%s.%s", attrs.Prompt.Vendor, attrs.Prompt.Mode)
+func (instance *Traceloop) LogPrompt(ctx context.Context, prompt Prompt, traceloopAttrs TraceloopAttributes) (LLMSpan, error) {
+	spanName := fmt.Sprintf("%s.%s", prompt.Vendor, prompt.Mode)
 	_, span := (*instance.tracerProvider).Tracer(instance.tracerName()).Start(ctx, spanName)
 	
 	span.SetAttributes(
-		semconvai.LLMVendor.String(attrs.Prompt.Vendor),
-		semconvai.LLMRequestModel.String(attrs.Prompt.Model),
-		semconvai.LLMRequestType.String(attrs.Prompt.Mode),
-		semconvai.LLMResponseModel.String(attrs.Completion.Model),
-		semconvai.LLMUsageTotalTokens.Int(attrs.Usage.TotalTokens),
-		semconvai.LLMUsageCompletionTokens.Int(attrs.Usage.CompletionTokens),
-		semconvai.LLMUsagePromptTokens.Int(attrs.Usage.PromptTokens),
-		semconvai.TraceloopWorkflowName.String(attrs.Traceloop.WorkflowName),
-		semconvai.TraceloopEntityName.String(attrs.Traceloop.EntityName),
+		semconvai.LLMVendor.String(prompt.Vendor),
+		semconvai.LLMRequestModel.String(prompt.Model),
+		semconvai.LLMRequestType.String(prompt.Mode),
+		semconvai.TraceloopWorkflowName.String(traceloopAttrs.WorkflowName),
+		semconvai.TraceloopEntityName.String(traceloopAttrs.EntityName),
 	)
 
-	setMessagesAttribute(span, "llm.prompts", attrs.Prompt.Messages)
-	setMessagesAttribute(span, "llm.completions", attrs.Completion.Messages)
+	setMessagesAttribute(span, "llm.prompts", prompt.Messages)
 
+	return LLMSpan{ 
+		span: span,
+	}, nil
+}
 
-	defer span.End()
+func (llmSpan *LLMSpan) LogCompletion(ctx context.Context, completion Completion, usage Usage) error {
+	llmSpan.span.SetAttributes(
+		semconvai.LLMResponseModel.String(completion.Model),
+		semconvai.LLMUsageTotalTokens.Int(usage.TotalTokens),
+		semconvai.LLMUsageCompletionTokens.Int(usage.CompletionTokens),
+		semconvai.LLMUsagePromptTokens.Int(usage.PromptTokens),
+	)
+
+	setMessagesAttribute(llmSpan.span, "llm.completions", completion.Messages)
+
+	defer llmSpan.span.End()
 
 	return nil
 }
