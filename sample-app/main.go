@@ -39,7 +39,7 @@ func main() {
 		})
 	}
 
-	llmSpan, _ := traceloop.LogPrompt(
+	llmSpan, err := traceloop.LogPrompt(
 		ctx, 
 		tlp.Prompt{
 			Vendor: "openai",
@@ -52,6 +52,10 @@ func main() {
 			EntityName:   "example-entity",
 		},
 	)
+	if err != nil {
+		fmt.Printf("LogPrompt error: %v\n", err)
+		return
+	}
 
 	client := openai.NewClient(os.Getenv("OPENAI_API_KEY"))
 	resp, err := client.CreateChatCompletion(
