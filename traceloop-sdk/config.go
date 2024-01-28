@@ -1,4 +1,4 @@
-package config
+package traceloop
 
 import "time"
 
@@ -9,6 +9,8 @@ type BackoffConfig struct {
 type Config struct {
     BaseURL				string
     APIKey            	string
+    TracerName        	string
+    ServiceName       	string
     PollingInterval   	time.Duration
     BackoffConfig     	BackoffConfig
 }

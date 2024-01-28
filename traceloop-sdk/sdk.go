@@ -12,33 +12,42 @@ import (
 	apitrace "go.opentelemetry.io/otel/trace"
 
 	semconvai "github.com/traceloop/go-openllmetry/semconv-ai"
-	"github.com/traceloop/go-openllmetry/traceloop-sdk/config"
-	"github.com/traceloop/go-openllmetry/traceloop-sdk/dto"
 	"github.com/traceloop/go-openllmetry/traceloop-sdk/model"
 )
 
 const PromptsPath = "/v1/traceloop/prompts"
 
 type Traceloop struct {
-    config            config.Config
+    config            Config
     promptRegistry    model.PromptRegistry
 	tracerProvider    *trace.TracerProvider
     http.Client
 }
 
-func NewClient(config config.Config) *Traceloop {
-	return &Traceloop{
+type LLMSpan struct {
+	span apitrace.Span
+}
+
+func NewClient(ctx context.Context, config Config) (*Traceloop, error) {
+	instance := Traceloop{
 		config:         config,
 		promptRegistry: make(model.PromptRegistry),
 		Client:         http.Client{},
 	}
+
+	err := instance.initialize(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &instance, nil
 }
 
-func (instance *Traceloop) Initialize(ctx context.Context) {
+func (instance *Traceloop) initialize(ctx context.Context) error {
 	if instance.config.BaseURL == "" {
 		baseUrl := os.Getenv("TRACELOOP_BASE_URL")
 		if baseUrl == "" {		
-			instance.config.BaseURL = "https://api.traceloop.com"
+			instance.config.BaseURL = "api.traceloop.com"
 		} else {
 			instance.config.BaseURL = baseUrl
 		}
@@ -53,52 +62,71 @@ func (instance *Traceloop) Initialize(ctx context.Context) {
 		}
 	}
 
-	fmt.Printf("Traceloop %s SDK initialized. Connecting to %s\n", instance.GetVersion(), instance.config.BaseURL)
+	fmt.Printf("Traceloop %s SDK initialized. Connecting to %s\n", Version(), instance.config.BaseURL)
 
 	instance.pollPrompts()
-	instance.initTracer(ctx, "GoExampleService")
+	err := instance.initTracer(ctx, instance.config.ServiceName)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func setMessagesAttribute(span *apitrace.Span, prefix string, messages []dto.Message) {
+func setMessagesAttribute(span apitrace.Span, prefix string, messages []Message) {
 	for _, message := range messages {
 		attrsPrefix := fmt.Sprintf("%s.%d", prefix, message.Index)
-		(*span).SetAttributes(
-			attribute.KeyValue{
-				Key:   attribute.Key(attrsPrefix + ".content"),
-				Value: attribute.StringValue(message.Content),
-			},
-			attribute.KeyValue{
-				Key:   attribute.Key(attrsPrefix + ".role"),
-				Value: attribute.StringValue(message.Role),
-			},
+		span.SetAttributes(
+			attribute.String(attrsPrefix + ".content", message.Content),
+			attribute.String(attrsPrefix + ".role", message.Role),
 		)
 	}
 }
 
-func (instance *Traceloop) LogPrompt(ctx context.Context, attrs dto.PromptLogAttributes) error {
-	spanName := fmt.Sprintf("%s.%s", attrs.Prompt.Vendor, attrs.Prompt.Mode)
-	_, span := (*instance.tracerProvider).Tracer(os.Args[0]).Start(ctx, spanName)
+func (instance *Traceloop) tracerName() string {
+	if instance.config.TracerName != "" {
+		return instance.config.TracerName
+	} else {
+		return "traceloop.tracer"
+	} 
+}
+
+func (instance *Traceloop) LogPrompt(ctx context.Context, prompt Prompt, traceloopAttrs TraceloopAttributes) (LLMSpan, error) {
+	spanName := fmt.Sprintf("%s.%s", prompt.Vendor, prompt.Mode)
+	_, span := (*instance.tracerProvider).Tracer(instance.tracerName()).Start(ctx, spanName)
 	
 	span.SetAttributes(
-		semconvai.LLMVendor.String(attrs.Prompt.Vendor),
-		semconvai.LLMRequestModel.String(attrs.Prompt.Model),
-		semconvai.LLMRequestType.String(attrs.Prompt.Mode),
-		semconvai.LLMResponseModel.String(attrs.Completion.Model),
-		semconvai.LLMUsageTotalTokens.Int(attrs.Usage.TotalTokens),
-		semconvai.LLMUsageCompletionTokens.Int(attrs.Usage.CompletionTokens),
-		semconvai.LLMUsagePromptTokens.Int(attrs.Usage.PromptTokens),
-		semconvai.TraceloopWorkflowName.String(attrs.Traceloop.WorkflowName),
-		semconvai.TraceloopEntityName.String(attrs.Traceloop.EntityName),
+		semconvai.LLMVendor.String(prompt.Vendor),
+		semconvai.LLMRequestModel.String(prompt.Model),
+		semconvai.LLMRequestType.String(prompt.Mode),
+		semconvai.TraceloopWorkflowName.String(traceloopAttrs.WorkflowName),
+		semconvai.TraceloopEntityName.String(traceloopAttrs.EntityName),
 	)
 
-	setMessagesAttribute(&span, "llm.prompts", attrs.Prompt.Messages)
-	setMessagesAttribute(&span, "llm.completions", attrs.Completion.Messages)
+	setMessagesAttribute(span, "llm.prompts", prompt.Messages)
 
-	defer span.End()
+	return LLMSpan{ 
+		span: span,
+	}, nil
+}
+
+func (llmSpan *LLMSpan) LogCompletion(ctx context.Context, completion Completion, usage Usage) error {
+	llmSpan.span.SetAttributes(
+		semconvai.LLMResponseModel.String(completion.Model),
+		semconvai.LLMUsageTotalTokens.Int(usage.TotalTokens),
+		semconvai.LLMUsageCompletionTokens.Int(usage.CompletionTokens),
+		semconvai.LLMUsagePromptTokens.Int(usage.PromptTokens),
+	)
+
+	setMessagesAttribute(llmSpan.span, "llm.completions", completion.Messages)
+
+	defer llmSpan.span.End()
 
 	return nil
 }
 
 func (instance *Traceloop) Shutdown(ctx context.Context) {
-	instance.tracerProvider.Shutdown(ctx)
+	if instance.tracerProvider != nil{
+		instance.tracerProvider.Shutdown(ctx)	
+	}
 }

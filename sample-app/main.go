@@ -7,74 +7,84 @@ import (
 	"time"
 
 	"github.com/sashabaranov/go-openai"
-	sdk "github.com/traceloop/go-openllmetry/traceloop-sdk"
-	"github.com/traceloop/go-openllmetry/traceloop-sdk/config"
-	"github.com/traceloop/go-openllmetry/traceloop-sdk/dto"
+	tlp "github.com/traceloop/go-openllmetry/traceloop-sdk"
 )
 
 func main() {
 	ctx := context.Background()
 
-	traceloop := sdk.NewClient(config.Config{
+	traceloop, err := tlp.NewClient(ctx, tlp.Config{
 		BaseURL: "api-staging.traceloop.com",
 		APIKey: os.Getenv("TRACELOOP_API_KEY"),
 	})
 	defer func() { traceloop.Shutdown(ctx) }()
 
-	traceloop.Initialize(ctx)
-
+	if err != nil {
+		fmt.Printf("NewClient error: %v\n", err)
+		return
+	}
 
 	request, err := traceloop.GetOpenAIChatCompletionRequest("example-prompt", map[string]interface{}{ "date": time.Now().Format("01/02") })
 	if err != nil {
 		fmt.Printf("GetOpenAIChatCompletionRequest error: %v\n", err)
 		return
 	}
-	
-	client := openai.NewClient(os.Getenv("OPENAI_API_KEY"))
-	resp, err := client.CreateChatCompletion(
-		context.Background(),
-		*request,
-	)
 
-	if err != nil {
-		fmt.Printf("ChatCompletion error: %v\n", err)
-		return
-	}
-
-	fmt.Println(resp.Choices[0].Message.Content)
-
-
-	log := dto.PromptLogAttributes{
-		Prompt: dto.Prompt{
-			Vendor: "openai",
-			Mode:   "chat",
-			Model: request.Model,
-		},
-		Completion: dto.Completion{
-			Model: resp.Model,
-		},
-		Usage: dto.Usage{
-			TotalTokens: resp.Usage.TotalTokens,
-			CompletionTokens: resp.Usage.CompletionTokens,
-			PromptTokens: resp.Usage.PromptTokens,
-		},
-	}	
-
+	var promptMsgs []tlp.Message
 	for i, message := range request.Messages {
-		log.Prompt.Messages = append(log.Prompt.Messages, dto.Message{
+		promptMsgs = append(promptMsgs, tlp.Message{
 			Index:   i,
 			Content: message.Content,
 			Role:    message.Role,
 		})
 	}
 
+	llmSpan, err := traceloop.LogPrompt(
+		ctx, 
+		tlp.Prompt{
+			Vendor: "openai",
+			Mode:   "chat",
+			Model: request.Model,
+			Messages: promptMsgs,
+		},
+		tlp.TraceloopAttributes{
+			WorkflowName: "example-workflow",
+			EntityName:   "example-entity",
+		},
+	)
+	if err != nil {
+		fmt.Printf("LogPrompt error: %v\n", err)
+		return
+	}
+
+	client := openai.NewClient(os.Getenv("OPENAI_API_KEY"))
+	resp, err := client.CreateChatCompletion(
+		context.Background(),
+		*request,
+	)
+	if err != nil {
+		fmt.Printf("ChatCompletion error: %v\n", err)
+		return
+	}
+
+	var completionMsgs []tlp.Message
 	for _, choice := range resp.Choices {
-		log.Completion.Messages = append(log.Completion.Messages, dto.Message{
+		completionMsgs = append(completionMsgs, tlp.Message{
 			Index:   choice.Index,
 			Content: choice.Message.Content,
 			Role:    choice.Message.Role,
 		})
 	}
 
-	traceloop.LogPrompt(ctx, log)
+	llmSpan.LogCompletion(ctx, tlp.Completion{
+		Model:    resp.Model,
+		Messages: completionMsgs,
+	}, tlp.Usage{
+		TotalTokens:       resp.Usage.TotalTokens,
+		CompletionTokens:  resp.Usage.CompletionTokens,
+		PromptTokens:      resp.Usage.PromptTokens,
+	})
+
+
+	fmt.Println(resp.Choices[0].Message.Content)
 }

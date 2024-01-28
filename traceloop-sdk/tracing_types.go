@@ -1,4 +1,4 @@
-package dto
+package traceloop
 
 type Message struct {
 	Index 		int   						`json:"index"`
@@ -33,12 +33,4 @@ type Usage struct {
 	TotalTokens 		int 					`json:"total_tokens"`
 	CompletionTokens 	int 					`json:"completion_tokens"`
 	PromptTokens 		int 					`json:"prompt_tokens"`
-}
-
-type PromptLogAttributes struct {
-	Prompt 				Prompt 					`json:"prompt"`
-	Completion 			Completion 				`json:"completion"`
-	Traceloop 			TraceloopAttributes 	`json:"traceloop"`
-	Usage 				Usage 					`json:"usage"`
-	Duration 			int 					`json:"duration"`
 }

@@ -7,9 +7,13 @@ import (
 
 	"github.com/kluctl/go-jinja2"
 	"github.com/sashabaranov/go-openai"
-	"github.com/traceloop/go-openllmetry/traceloop-sdk/dto"
 	"github.com/traceloop/go-openllmetry/traceloop-sdk/model"
 )
+
+type PromptsResponse struct {
+	Prompts 			[]model.Prompt 			`json:"prompts"`
+	Environment 		string 					`json:"environment"`
+}
 
 func (instance *Traceloop) populatePromptRegistry() {
 	resp, err := instance.fetchPathWithRetry(PromptsPath, instance.config.BackoffConfig.MaxRetries)
@@ -20,7 +24,7 @@ func (instance *Traceloop) populatePromptRegistry() {
 	defer resp.Body.Close()
 	decoder := json.NewDecoder(resp.Body)
 
-	var response dto.PromptsResponse
+	var response PromptsResponse
 	err = decoder.Decode(&response)
 	if err != nil {
 		fmt.Println("Failed to decode response", err)
