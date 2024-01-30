@@ -3,6 +3,7 @@ package traceloop
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"time"
@@ -62,7 +63,7 @@ func (instance *Traceloop) initialize(ctx context.Context) error {
 		}
 	}
 
-	fmt.Printf("Traceloop %s SDK initialized. Connecting to %s\n", Version(), instance.config.BaseURL)
+	log.Printf("Traceloop %s SDK initialized. Connecting to %s\n", Version(), instance.config.BaseURL)
 
 	instance.pollPrompts()
 	err := instance.initTracer(ctx, instance.config.ServiceName)
@@ -91,16 +92,19 @@ func (instance *Traceloop) tracerName() string {
 	} 
 }
 
-func (instance *Traceloop) LogPrompt(ctx context.Context, prompt Prompt, traceloopAttrs TraceloopAttributes) (LLMSpan, error) {
+func (instance *Traceloop) getTracer() apitrace.Tracer {
+	return (*instance.tracerProvider).Tracer(instance.tracerName())
+}
+
+func (instance *Traceloop) LogPrompt(ctx context.Context, prompt Prompt, workflowAttrs WorkflowAttributes) (LLMSpan, error) {
 	spanName := fmt.Sprintf("%s.%s", prompt.Vendor, prompt.Mode)
-	_, span := (*instance.tracerProvider).Tracer(instance.tracerName()).Start(ctx, spanName)
+	_, span := instance.getTracer().Start(ctx, spanName)
 	
 	span.SetAttributes(
 		semconvai.LLMVendor.String(prompt.Vendor),
 		semconvai.LLMRequestModel.String(prompt.Model),
 		semconvai.LLMRequestType.String(prompt.Mode),
-		semconvai.TraceloopWorkflowName.String(traceloopAttrs.WorkflowName),
-		semconvai.TraceloopEntityName.String(traceloopAttrs.EntityName),
+		semconvai.TraceloopWorkflowName.String(workflowAttrs.Name),
 	)
 
 	setMessagesAttribute(span, "llm.prompts", prompt.Messages)
