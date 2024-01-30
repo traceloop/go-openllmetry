@@ -25,7 +25,7 @@ func (instance *Traceloop) NewWorkflow(ctx context.Context, attrs WorkflowAttrib
 	
 	span.SetAttributes(
 		semconvai.TraceloopWorkflowName.String(attrs.Name),
-		semconvai.TraceloopSpanKind.String("task"),
+		semconvai.TraceloopSpanKind.String("workflow"),
 		semconvai.TraceloopEntityName.String(attrs.Name),
 	)
 
