@@ -23,9 +23,8 @@ type Completion struct {
 	Messages 			[]Message 			`json:"messages"`
 }
 
-type TraceloopAttributes struct {
-	WorkflowName 		string 					`json:"workflow_name"`
-	EntityName 			string 					`json:"entity_name"`
+type WorkflowAttributes struct {
+	Name 				  string 			    `json:"workflow_name"`
 	AssociationProperties map[string]string 	`json:"association_properties"`
 }
 
