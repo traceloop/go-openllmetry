@@ -87,6 +87,7 @@ Now, you need to decide where to export the traces to.
 - [x] [Dynatrace](https://www.traceloop.com/docs/openllmetry/integrations/dynatrace)
 - [x] [Datadog](https://www.traceloop.com/docs/openllmetry/integrations/datadog)
 - [x] [New Relic](https://www.traceloop.com/docs/openllmetry/integrations/newrelic)
+- [x] [Highlight](https://www.traceloop.com/docs/openllmetry/integrations/highlight)
 - [x] [Honeycomb](https://www.traceloop.com/docs/openllmetry/integrations/honeycomb)
 - [x] [Grafana Tempo](https://www.traceloop.com/docs/openllmetry/integrations/grafana)
 - [x] [HyperDX](https://www.traceloop.com/docs/openllmetry/integrations/hyperdx)
