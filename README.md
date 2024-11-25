@@ -84,14 +84,23 @@ Now, you need to decide where to export the traces to.
 ## ⏫ Supported (and tested) destinations
 
 - [x] [Traceloop](https://www.traceloop.com/docs/openllmetry/integrations/traceloop)
-- [x] [Dynatrace](https://www.traceloop.com/docs/openllmetry/integrations/dynatrace)
+- [x] [Axiom](https://www.traceloop.com/docs/openllmetry/integrations/axiom)
+- [x] [Azure Application Insights](https://www.traceloop.com/docs/openllmetry/integrations/azure)
 - [x] [Datadog](https://www.traceloop.com/docs/openllmetry/integrations/datadog)
-- [x] [New Relic](https://www.traceloop.com/docs/openllmetry/integrations/newrelic)
+- [x] [Dynatrace](https://www.traceloop.com/docs/openllmetry/integrations/dynatrace)
+- [x] [Grafana](https://www.traceloop.com/docs/openllmetry/integrations/grafana)
+- [x] [Highlight](https://www.traceloop.com/docs/openllmetry/integrations/highlight)
 - [x] [Honeycomb](https://www.traceloop.com/docs/openllmetry/integrations/honeycomb)
-- [x] [Grafana Tempo](https://www.traceloop.com/docs/openllmetry/integrations/grafana)
 - [x] [HyperDX](https://www.traceloop.com/docs/openllmetry/integrations/hyperdx)
-- [x] [SigNoz](https://www.traceloop.com/docs/openllmetry/integrations/signoz)
+- [x] [IBM Instana](https://www.traceloop.com/docs/openllmetry/integrations/instana)
+- [x] [KloudMate](https://www.traceloop.com/docs/openllmetry/integrations/kloudmate)
+- [x] [New Relic](https://www.traceloop.com/docs/openllmetry/integrations/newrelic)
 - [x] [OpenTelemetry Collector](https://www.traceloop.com/docs/openllmetry/integrations/otel-collector)
+- [x] [Service Now Cloud Observability](https://www.traceloop.com/docs/openllmetry/integrations/service-now)
+- [x] [SigNoz](https://www.traceloop.com/docs/openllmetry/integrations/signoz)
+- [x] [Sentry](https://www.traceloop.com/docs/openllmetry/integrations/sentry)
+- [x] [Splunk](https://www.traceloop.com/docs/openllmetry/integrations/splunk)
+
 
 See [our docs](https://traceloop.com/docs/openllmetry/integrations/exporting) for instructions on connecting to each one.
 
