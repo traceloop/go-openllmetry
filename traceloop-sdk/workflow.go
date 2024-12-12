@@ -9,20 +9,20 @@ import (
 )
 
 type Workflow struct {
-	sdk 				*Traceloop
-	ctx 				context.Context
-	Attributes 			WorkflowAttributes 		`json:"workflow_attributes"`
+	sdk        *Traceloop
+	ctx        context.Context
+	Attributes WorkflowAttributes `json:"workflow_attributes"`
 }
 
 type Task struct {
-	workflow 			*Workflow 				
-	ctx 				context.Context		
-	Name 				string 					`json:"name"`
+	workflow *Workflow
+	ctx      context.Context
+	Name     string `json:"name"`
 }
 
 func (instance *Traceloop) NewWorkflow(ctx context.Context, attrs WorkflowAttributes) *Workflow {
 	wCtx, span := instance.getTracer().Start(ctx, fmt.Sprintf("%s.workflow", attrs.Name), trace.WithNewRoot())
-	
+
 	span.SetAttributes(
 		semconvai.TraceloopWorkflowName.String(attrs.Name),
 		semconvai.TraceloopSpanKind.String("workflow"),
@@ -30,8 +30,8 @@ func (instance *Traceloop) NewWorkflow(ctx context.Context, attrs WorkflowAttrib
 	)
 
 	return &Workflow{
-		sdk: instance,
-		ctx: wCtx,
+		sdk:        instance,
+		ctx:        wCtx,
 		Attributes: attrs,
 	}
 }
@@ -55,8 +55,8 @@ func (workflow *Workflow) NewTask(name string) *Task {
 
 	return &Task{
 		workflow: workflow,
-		ctx: tCtx,
-		Name: name,
+		ctx:      tCtx,
+		Name:     name,
 	}
 }
 

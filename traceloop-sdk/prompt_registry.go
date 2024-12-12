@@ -11,8 +11,8 @@ import (
 )
 
 type PromptsResponse struct {
-	Prompts 			[]model.Prompt 			`json:"prompts"`
-	Environment 		string 					`json:"environment"`
+	Prompts     []model.Prompt `json:"prompts"`
+	Environment string         `json:"environment"`
 }
 
 func (instance *Traceloop) populatePromptRegistry() {
@@ -38,7 +38,7 @@ func (instance *Traceloop) populatePromptRegistry() {
 
 func (instance *Traceloop) pollPrompts() {
 	prompts := make(chan []model.Prompt)
-    errs := make(chan error)
+	errs := make(chan error)
 
 	instance.populatePromptRegistry()
 
@@ -103,12 +103,12 @@ func (instance *Traceloop) GetOpenAIChatCompletionRequest(key string, variables 
 	}
 
 	return &openai.ChatCompletionRequest{
-		Model: promptVersion.LlmConfig.Model,
-		Temperature: promptVersion.LlmConfig.Temperature,
-		TopP: promptVersion.LlmConfig.TopP,
-		Stop: promptVersion.LlmConfig.Stop,
+		Model:            promptVersion.LlmConfig.Model,
+		Temperature:      promptVersion.LlmConfig.Temperature,
+		TopP:             promptVersion.LlmConfig.TopP,
+		Stop:             promptVersion.LlmConfig.Stop,
 		FrequencyPenalty: promptVersion.LlmConfig.FrequencyPenalty,
-		PresencePenalty: promptVersion.LlmConfig.PresencePenalty,
-		Messages: messages,
+		PresencePenalty:  promptVersion.LlmConfig.PresencePenalty,
+		Messages:         messages,
 	}, nil
 }

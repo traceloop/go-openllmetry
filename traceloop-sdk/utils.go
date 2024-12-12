@@ -22,7 +22,7 @@ func (instance *Traceloop) fetchPath(path string) (*http.Response, error) {
 
 func (instance *Traceloop) fetchPathWithRetry(path string, maxRetries uint64) (*http.Response, error) {
 	var resp *http.Response
-	
+
 	err := backoff.Retry(func() error {
 		var err error
 		resp, err = instance.fetchPath(path)

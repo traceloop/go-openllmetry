@@ -15,7 +15,7 @@ func workflow_example() {
 
 	traceloop, err := tlp.NewClient(ctx, tlp.Config{
 		BaseURL: "api-staging.traceloop.com",
-		APIKey: os.Getenv("TRACELOOP_API_KEY"),
+		APIKey:  os.Getenv("TRACELOOP_API_KEY"),
 	})
 	defer func() { traceloop.Shutdown(ctx) }()
 
@@ -24,7 +24,7 @@ func workflow_example() {
 		return
 	}
 
-	request, err := traceloop.GetOpenAIChatCompletionRequest("example-prompt", map[string]interface{}{ "date": time.Now().Format("01/02") })
+	request, err := traceloop.GetOpenAIChatCompletionRequest("example-prompt", map[string]interface{}{"date": time.Now().Format("01/02")})
 	if err != nil {
 		fmt.Printf("GetOpenAIChatCompletionRequest error: %v\n", err)
 		return
@@ -40,11 +40,11 @@ func workflow_example() {
 	}
 
 	llmSpan, err := traceloop.LogPrompt(
-		ctx, 
+		ctx,
 		tlp.Prompt{
-			Vendor: "openai",
-			Mode:   "chat",
-			Model: request.Model,
+			Vendor:   "openai",
+			Mode:     "chat",
+			Model:    request.Model,
 			Messages: promptMsgs,
 		},
 		tlp.WorkflowAttributes{
@@ -79,11 +79,10 @@ func workflow_example() {
 		Model:    resp.Model,
 		Messages: completionMsgs,
 	}, tlp.Usage{
-		TotalTokens:       resp.Usage.TotalTokens,
-		CompletionTokens:  resp.Usage.CompletionTokens,
-		PromptTokens:      resp.Usage.PromptTokens,
+		TotalTokens:      resp.Usage.TotalTokens,
+		CompletionTokens: resp.Usage.CompletionTokens,
+		PromptTokens:     resp.Usage.PromptTokens,
 	})
-
 
 	fmt.Println(resp.Choices[0].Message.Content)
 }
