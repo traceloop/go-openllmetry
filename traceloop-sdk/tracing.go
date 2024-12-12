@@ -16,15 +16,15 @@ import (
 
 func newTraceloopExporter(ctx context.Context, config Config) (*otlp.Exporter, error) {
 	return otlp.New(
-			ctx,
-			otlphttp.NewClient(
-				otlphttp.WithEndpoint(config.BaseURL),
-				otlphttp.WithHeaders(
-					map[string]string{
-						"Authorization": fmt.Sprintf("Bearer %s", config.APIKey),
-					},
-				),	
+		ctx,
+		otlphttp.NewClient(
+			otlphttp.WithEndpoint(config.BaseURL),
+			otlphttp.WithHeaders(
+				map[string]string{
+					"Authorization": fmt.Sprintf("Bearer %s", config.APIKey),
+				},
 			),
+		),
 	)
 }
 
@@ -53,7 +53,7 @@ func newGenericExporter(ctx context.Context) (*otlp.Exporter, error) {
 			ctx,
 			otlphttp.NewClient(
 				otlphttp.WithEndpoint(endpoint),
-				otlphttp.WithHeaders(headers),	
+				otlphttp.WithHeaders(headers),
 			),
 		)
 	} else if protocol == "grpc" {
@@ -70,9 +70,8 @@ func newGenericExporter(ctx context.Context) (*otlp.Exporter, error) {
 	}
 }
 
-
 func newOtlpExporter(ctx context.Context, config Config) (*otlp.Exporter, error) {
-	if (os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT") == "") {
+	if os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT") == "" {
 		return newTraceloopExporter(ctx, config)
 	} else {
 		return newGenericExporter(ctx)
@@ -94,7 +93,7 @@ func resourceName(serviceName string) string {
 	}
 
 	return "unknown_service"
-}	
+}
 
 func newTracerProvider(ctx context.Context, serviceName string, exp trace.SpanExporter) (*trace.TracerProvider, error) {
 	r, err := resource.New(
@@ -119,7 +118,7 @@ func (instance *Traceloop) initTracer(ctx context.Context, serviceName string) e
 	if err != nil {
 		return fmt.Errorf("create otlp exporter: %w", err)
 	}
-	
+
 	tp, err := newTracerProvider(ctx, serviceName, exp)
 	if err != nil {
 		return fmt.Errorf("create tracer provider: %w", err)

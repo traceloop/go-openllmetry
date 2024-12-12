@@ -15,7 +15,7 @@ func main() {
 
 	traceloop, err := tlp.NewClient(ctx, tlp.Config{
 		BaseURL: "api-staging.traceloop.com",
-		APIKey: os.Getenv("TRACELOOP_API_KEY"),
+		APIKey:  os.Getenv("TRACELOOP_API_KEY"),
 	})
 	defer func() { traceloop.Shutdown(ctx) }()
 
@@ -32,7 +32,7 @@ func main() {
 	factGenTask := wf.NewTask("current_date_fact_generation")
 	defer factGenTask.End()
 
-	request, err := traceloop.GetOpenAIChatCompletionRequest("example-prompt", map[string]interface{}{ "date": time.Now().Format("01/02") })
+	request, err := traceloop.GetOpenAIChatCompletionRequest("example-prompt", map[string]interface{}{"date": time.Now().Format("01/02")})
 	if err != nil {
 		fmt.Printf("GetOpenAIChatCompletionRequest error: %v\n", err)
 		return
@@ -49,9 +49,9 @@ func main() {
 
 	llmSpan, err := factGenTask.LogPrompt(
 		tlp.Prompt{
-			Vendor: "openai",
-			Mode:   "chat",
-			Model: request.Model,
+			Vendor:   "openai",
+			Mode:     "chat",
+			Model:    request.Model,
 			Messages: promptMsgs,
 		},
 	)
@@ -83,9 +83,9 @@ func main() {
 		Model:    resp.Model,
 		Messages: completionMsgs,
 	}, tlp.Usage{
-		TotalTokens:       resp.Usage.TotalTokens,
-		CompletionTokens:  resp.Usage.CompletionTokens,
-		PromptTokens:      resp.Usage.PromptTokens,
+		TotalTokens:      resp.Usage.TotalTokens,
+		CompletionTokens: resp.Usage.CompletionTokens,
+		PromptTokens:     resp.Usage.PromptTokens,
 	})
 
 	someOtherTask := wf.NewTask("some_other_task")
@@ -94,7 +94,7 @@ func main() {
 	otherPrompt, _ := someOtherTask.LogPrompt(tlp.Prompt{
 		Vendor: "openai",
 		Mode:   "chat",
-		Model: request.Model,
+		Model:  request.Model,
 		Messages: []tlp.Message{
 			{
 				Index:   0,
@@ -108,9 +108,9 @@ func main() {
 		Model:    resp.Model,
 		Messages: completionMsgs,
 	}, tlp.Usage{
-		TotalTokens:       resp.Usage.TotalTokens,
-		CompletionTokens:  resp.Usage.CompletionTokens,
-		PromptTokens:      resp.Usage.PromptTokens,
+		TotalTokens:      resp.Usage.TotalTokens,
+		CompletionTokens: resp.Usage.CompletionTokens,
+		PromptTokens:     resp.Usage.PromptTokens,
 	})
 
 	fmt.Println(resp.Choices[0].Message.Content)
