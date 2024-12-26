@@ -6,10 +6,22 @@
 *.exe~
 *.dll
 *.so
-*.dylib
+*.tar.gz
+/release/
+sample-app
 
 # Test binary, built with `go test -c`
 *.test
+cover*
+coverage*
+
+# Credentials
+cert*/
+*.pem
+*.crt
+*.cer
+*.key
+*.p12
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
@@ -17,7 +29,7 @@
 # Dependency directories (remove the comment below to include it)
 # vendor/
 
-# Go workspace file
-go.work
+# macOS
+.DS_Store
 
 .vscode/
