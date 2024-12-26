@@ -19,10 +19,10 @@ import (
 const PromptsPath = "/v1/traceloop/prompts"
 
 type Traceloop struct {
-    config            Config
-    promptRegistry    model.PromptRegistry
-	tracerProvider    *trace.TracerProvider
-    http.Client
+	config         Config
+	promptRegistry model.PromptRegistry
+	tracerProvider *trace.TracerProvider
+	http.Client
 }
 
 type LLMSpan struct {
@@ -47,7 +47,7 @@ func NewClient(ctx context.Context, config Config) (*Traceloop, error) {
 func (instance *Traceloop) initialize(ctx context.Context) error {
 	if instance.config.BaseURL == "" {
 		baseUrl := os.Getenv("TRACELOOP_BASE_URL")
-		if baseUrl == "" {		
+		if baseUrl == "" {
 			instance.config.BaseURL = "api.traceloop.com"
 		} else {
 			instance.config.BaseURL = baseUrl
@@ -78,8 +78,8 @@ func setMessagesAttribute(span apitrace.Span, prefix string, messages []Message)
 	for _, message := range messages {
 		attrsPrefix := fmt.Sprintf("%s.%d", prefix, message.Index)
 		span.SetAttributes(
-			attribute.String(attrsPrefix + ".content", message.Content),
-			attribute.String(attrsPrefix + ".role", message.Role),
+			attribute.String(attrsPrefix+".content", message.Content),
+			attribute.String(attrsPrefix+".role", message.Role),
 		)
 	}
 }
@@ -89,7 +89,7 @@ func (instance *Traceloop) tracerName() string {
 		return instance.config.TracerName
 	} else {
 		return "traceloop.tracer"
-	} 
+	}
 }
 
 func (instance *Traceloop) getTracer() apitrace.Tracer {
@@ -99,7 +99,7 @@ func (instance *Traceloop) getTracer() apitrace.Tracer {
 func (instance *Traceloop) LogPrompt(ctx context.Context, prompt Prompt, workflowAttrs WorkflowAttributes) (LLMSpan, error) {
 	spanName := fmt.Sprintf("%s.%s", prompt.Vendor, prompt.Mode)
 	_, span := instance.getTracer().Start(ctx, spanName)
-	
+
 	span.SetAttributes(
 		semconvai.LLMVendor.String(prompt.Vendor),
 		semconvai.LLMRequestModel.String(prompt.Model),
@@ -109,7 +109,7 @@ func (instance *Traceloop) LogPrompt(ctx context.Context, prompt Prompt, workflo
 
 	setMessagesAttribute(span, "llm.prompts", prompt.Messages)
 
-	return LLMSpan{ 
+	return LLMSpan{
 		span: span,
 	}, nil
 }
@@ -130,7 +130,7 @@ func (llmSpan *LLMSpan) LogCompletion(ctx context.Context, completion Completion
 }
 
 func (instance *Traceloop) Shutdown(ctx context.Context) {
-	if instance.tracerProvider != nil{
-		instance.tracerProvider.Shutdown(ctx)	
+	if instance.tracerProvider != nil {
+		instance.tracerProvider.Shutdown(ctx)
 	}
 }
