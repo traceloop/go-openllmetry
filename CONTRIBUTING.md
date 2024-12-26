@@ -1,14 +1,30 @@
-# Contributing to OpenLLMetry-JS
+# Contributing to `go-openllmetry`
 
 Thanks for taking the time to contribute! 😃 🚀
 
 Please refer to our [Contributing Guide](https://traceloop.com/docs/openllmetry/contributing/overview) for instructions on how to contribute.
 
-## Releasing
+### Prerequisites
 
-To release a new version of the package, run (make sure you have access to the `@traceloop` npm organization):
+- `go` version `v1.21.0+`
+
+## Development
+
+Clone the repository:
 
 ```bash
-nx run-many --targets=build
-npx lerna publish --no-private
+git clone https://github.com/traceloop/go-openllmetry
+cd go-openllmetry
+```
+
+## Release
+
+```bash
+git tag -a <module>/v<sem version> -m "release: <module>@v<sem version>"
+```
+
+For example:
+
+```bash
+git tag -a traceloop-sdk/v0.0.4 -m "release: traceloop-sdk@v0.0.4"
 ```
