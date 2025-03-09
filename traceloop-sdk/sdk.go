@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"go.opentelemetry.io/otel/attribute"
@@ -21,6 +22,7 @@ const PromptsPath = "/v1/traceloop/prompts"
 type Traceloop struct {
 	config         Config
 	promptRegistry model.PromptRegistry
+	registryMutex  sync.RWMutex
 	tracerProvider *trace.TracerProvider
 	http.Client
 }
