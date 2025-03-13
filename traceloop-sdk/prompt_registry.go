@@ -31,9 +31,11 @@ func (instance *Traceloop) populatePromptRegistry() {
 		return
 	}
 
+	instance.registryMutex.Lock()
 	for _, prompt := range response.Prompts {
 		instance.promptRegistry[prompt.Key] = &prompt
 	}
+	instance.registryMutex.Unlock()
 }
 
 func (instance *Traceloop) pollPrompts() {
@@ -55,6 +57,8 @@ func (instance *Traceloop) pollPrompts() {
 }
 
 func (instance *Traceloop) getPromptVersion(key string) (*model.PromptVersion, error) {
+	instance.registryMutex.RLock()
+	defer instance.registryMutex.RUnlock()
 	if instance.promptRegistry[key] == nil {
 		return nil, fmt.Errorf("prompt with key %s not found", key)
 	}
