@@ -94,6 +94,7 @@ Now, you need to decide where to export the traces to.
 - [x] [HyperDX](https://www.traceloop.com/docs/openllmetry/integrations/hyperdx)
 - [x] [IBM Instana](https://www.traceloop.com/docs/openllmetry/integrations/instana)
 - [x] [KloudMate](https://www.traceloop.com/docs/openllmetry/integrations/kloudmate)
+- [X] [Langfuse](https://langfuse.com/docs/opentelemetry/example-openllmetry)
 - [x] [New Relic](https://www.traceloop.com/docs/openllmetry/integrations/newrelic)
 - [x] [OpenTelemetry Collector](https://www.traceloop.com/docs/openllmetry/integrations/otel-collector)
 - [x] [Service Now Cloud Observability](https://www.traceloop.com/docs/openllmetry/integrations/service-now)
