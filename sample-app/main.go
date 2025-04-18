@@ -10,7 +10,7 @@ import (
 	tlp "github.com/traceloop/go-openllmetry/traceloop-sdk"
 )
 
-func workflow_example() {
+func main() {
 	ctx := context.Background()
 
 	traceloop, err := tlp.NewClient(ctx, tlp.Config{
@@ -23,6 +23,14 @@ func workflow_example() {
 		fmt.Printf("NewClient error: %v\n", err)
 		return
 	}
+
+	wf := traceloop.NewWorkflow(ctx, tlp.WorkflowAttributes{
+		Name: "history_generation",
+	})
+	defer wf.End()
+
+	factGenTask := wf.NewTask("current_date_fact_generation")
+	defer factGenTask.End()
 
 	request, err := traceloop.GetOpenAIChatCompletionRequest("example-prompt", map[string]interface{}{"date": time.Now().Format("01/02")})
 	if err != nil {
@@ -39,16 +47,12 @@ func workflow_example() {
 		})
 	}
 
-	llmSpan, err := traceloop.LogPrompt(
-		ctx,
+	llmSpan, err := factGenTask.LogPrompt(
 		tlp.Prompt{
 			Vendor:   "openai",
 			Mode:     "chat",
 			Model:    request.Model,
 			Messages: promptMsgs,
-		},
-		tlp.WorkflowAttributes{
-			Name: "example-workflow",
 		},
 	)
 	if err != nil {
@@ -76,6 +80,31 @@ func workflow_example() {
 	}
 
 	llmSpan.LogCompletion(ctx, tlp.Completion{
+		Model:    resp.Model,
+		Messages: completionMsgs,
+	}, tlp.Usage{
+		TotalTokens:      resp.Usage.TotalTokens,
+		CompletionTokens: resp.Usage.CompletionTokens,
+		PromptTokens:     resp.Usage.PromptTokens,
+	})
+
+	someOtherTask := wf.NewTask("some_other_task")
+	defer someOtherTask.End()
+
+	otherPrompt, _ := someOtherTask.LogPrompt(tlp.Prompt{
+		Vendor: "openai",
+		Mode:   "chat",
+		Model:  request.Model,
+		Messages: []tlp.Message{
+			{
+				Index:   0,
+				Content: "some other prompt",
+				Role:    "user",
+			},
+		},
+	})
+
+	otherPrompt.LogCompletion(ctx, tlp.Completion{
 		Model:    resp.Model,
 		Messages: completionMsgs,
 	}, tlp.Usage{
