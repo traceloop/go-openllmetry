@@ -24,4 +24,4 @@ jobs:
       - name: Build
         run: find . -name go.mod -execdir go build . \;
       - name: Test
-        run: find . -name go.mod -execdir go test ./... \;
+        run: find . -name go.mod -execdir go test . \;
