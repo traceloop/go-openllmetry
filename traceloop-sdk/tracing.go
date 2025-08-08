@@ -13,10 +13,16 @@ import (
 )
 
 func newOtlpExporter(ctx context.Context, endpoint string, apiKey string) (*otlp.Exporter, error) {
+	// OTLP client expects just the hostname, not the full URL
+	cleanEndpoint := endpoint
+	if len(endpoint) > 8 && endpoint[:8] == "https://" {
+		cleanEndpoint = endpoint[8:] // Remove https:// prefix
+	}
+	
 	return otlp.New(
 		ctx,
 		otlpclient.NewClient(
-			otlpclient.WithEndpoint(endpoint),
+			otlpclient.WithEndpoint(cleanEndpoint),
 			otlpclient.WithHeaders(map[string]string{
 				"Authorization": fmt.Sprintf("Bearer %s", apiKey),
 			}),

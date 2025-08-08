@@ -4,6 +4,29 @@ type Message struct {
 	Index 		int   						`json:"index"`
 	Role 		string  					`json:"role"`
 	Content 	string  					`json:"content"`
+	ToolCalls 	[]ToolCall 				`json:"tool_calls,omitempty"`
+}
+
+type ToolFunction struct {
+	Name 		string 		`json:"name"`
+	Description string 		`json:"description"`
+	Parameters 	interface{} `json:"parameters"`
+}
+
+type Tool struct {
+	Type 		string 			`json:"type"`
+	Function 	ToolFunction 	`json:"function"`
+}
+
+type ToolCall struct {
+	ID 			string 			`json:"id"`
+	Type 		string 			`json:"type"`
+	Function 	ToolCallFunction `json:"function"`
+}
+
+type ToolCallFunction struct {
+	Name 		string 		`json:"name"`
+	Arguments 	string 		`json:"arguments"`
 }
 
 type Prompt struct {
@@ -16,6 +39,7 @@ type Prompt struct {
 	FrequencyPenalty 	float32 			`json:"frequency_penalty"`
 	PresencePenalty 	float32 			`json:"presence_penalty"`
 	Messages 			[]Message 			`json:"messages"`
+	Tools 				[]Tool 				`json:"tools,omitempty"`
 }
 
 type Completion struct {

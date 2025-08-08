@@ -2,6 +2,7 @@ package traceloop
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -72,12 +73,104 @@ func setMessagesAttribute(span *apitrace.Span, prefix string, messages []dto.Mes
 				Value: attribute.StringValue(message.Role),
 			},
 		)
+
+		if len(message.ToolCalls) > 0 {
+			setMessageToolCallsAttribute(span, attrsPrefix, message.ToolCalls)
+		}
+	}
+}
+
+func setMessageToolCallsAttribute(span *apitrace.Span, messagePrefix string, toolCalls []dto.ToolCall) {
+	for i, toolCall := range toolCalls {
+		toolCallPrefix := fmt.Sprintf("%s.tool_calls.%d", messagePrefix, i)
+		(*span).SetAttributes(
+			attribute.KeyValue{
+				Key:   attribute.Key(toolCallPrefix + ".id"),
+				Value: attribute.StringValue(toolCall.ID),
+			},
+			attribute.KeyValue{
+				Key:   attribute.Key(toolCallPrefix + ".name"),
+				Value: attribute.StringValue(toolCall.Function.Name),
+			},
+			attribute.KeyValue{
+				Key:   attribute.Key(toolCallPrefix + ".arguments"),
+				Value: attribute.StringValue(toolCall.Function.Arguments),
+			},
+		)
+	}
+}
+
+func setCompletionsAttribute(span *apitrace.Span, messages []dto.Message) {
+	for _, message := range messages {
+		prefix := fmt.Sprintf("llm.completions.%d", message.Index)
+		attrs := []attribute.KeyValue{
+			{Key: attribute.Key(prefix + ".role"), Value: attribute.StringValue(message.Role)},
+			{Key: attribute.Key(prefix + ".content"), Value: attribute.StringValue(message.Content)},
+		}
+		
+		// Set tool calls attributes exactly like Python version
+		for i, toolCall := range message.ToolCalls {
+			toolCallPrefix := fmt.Sprintf("%s.tool_calls.%d", prefix, i)
+			attrs = append(attrs, 
+				attribute.KeyValue{Key: attribute.Key(toolCallPrefix + ".id"), Value: attribute.StringValue(toolCall.ID)},
+				attribute.KeyValue{Key: attribute.Key(toolCallPrefix + ".name"), Value: attribute.StringValue(toolCall.Function.Name)},
+				attribute.KeyValue{Key: attribute.Key(toolCallPrefix + ".arguments"), Value: attribute.StringValue(toolCall.Function.Arguments)},
+			)
+		}
+		
+		(*span).SetAttributes(attrs...)
+	}
+}
+
+func setToolsAttribute(span *apitrace.Span, tools []dto.Tool) {
+	if len(tools) == 0 {
+		return
+	}
+
+	for i, tool := range tools {
+		prefix := fmt.Sprintf("%s.%d", string(semconvai.LLMRequestFunctions), i)
+		(*span).SetAttributes(
+			attribute.KeyValue{
+				Key:   attribute.Key(prefix + ".name"),
+				Value: attribute.StringValue(tool.Function.Name),
+			},
+			attribute.KeyValue{
+				Key:   attribute.Key(prefix + ".description"),
+				Value: attribute.StringValue(tool.Function.Description),
+			},
+		)
+
+		if tool.Function.Parameters != nil {
+			parametersJSON, err := json.Marshal(tool.Function.Parameters)
+			if err == nil {
+				(*span).SetAttributes(
+					attribute.KeyValue{
+						Key:   attribute.Key(prefix + ".parameters"),
+						Value: attribute.StringValue(string(parametersJSON)),
+					},
+				)
+			}
+		}
 	}
 }
 
 func (instance *Traceloop) LogPrompt(ctx context.Context, attrs dto.PromptLogAttributes) error {
 	spanName := fmt.Sprintf("%s.%s", attrs.Prompt.Vendor, attrs.Prompt.Mode)
-	_, span := (*instance.tracerProvider).Tracer(os.Args[0]).Start(ctx, spanName)
+	
+	// Calculate start time based on duration
+	endTime := time.Now()
+	startTime := endTime.Add(-time.Duration(attrs.Duration) * time.Millisecond)
+	
+	// Create span with historical start time
+	spanCtx, span := (*instance.tracerProvider).Tracer(os.Args[0]).Start(
+		ctx, 
+		spanName,
+		apitrace.WithTimestamp(startTime),
+	)
+	
+	// Serialize messages to JSON for main attributes (both needed)
+	promptsJSON, _ := json.Marshal(attrs.Prompt.Messages)
+	completionsJSON, _ := json.Marshal(attrs.Completion.Messages)
 	
 	span.SetAttributes(
 		semconvai.LLMVendor.String(attrs.Prompt.Vendor),
@@ -89,12 +182,18 @@ func (instance *Traceloop) LogPrompt(ctx context.Context, attrs dto.PromptLogAtt
 		semconvai.LLMUsagePromptTokens.Int(attrs.Usage.PromptTokens),
 		semconvai.TraceloopWorkflowName.String(attrs.Traceloop.WorkflowName),
 		semconvai.TraceloopEntityName.String(attrs.Traceloop.EntityName),
+		semconvai.LLMPrompts.String(string(promptsJSON)),
+		semconvai.LLMCompletions.String(string(completionsJSON)),
 	)
 
 	setMessagesAttribute(&span, "llm.prompts", attrs.Prompt.Messages)
-	setMessagesAttribute(&span, "llm.completions", attrs.Completion.Messages)
+	setCompletionsAttribute(&span, attrs.Completion.Messages)
+	setToolsAttribute(&span, attrs.Prompt.Tools)
 
-	defer span.End()
+	// End span with correct end time
+	span.End(apitrace.WithTimestamp(endTime))
+
+	_ = spanCtx // avoid unused variable
 
 	return nil
 }

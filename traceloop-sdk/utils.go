@@ -19,7 +19,7 @@ func (instance *Traceloop) GetVersion() string {
 }
 
 func (instance *Traceloop) fetchPath(path string) (*http.Response, error) {
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("https://%s/%s", instance.config.BaseURL, path), nil)
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/%s", instance.config.BaseURL, path), nil)
 	if err != nil {
 		fmt.Printf("Failed to create request: %v\n", err)
 		return nil, err

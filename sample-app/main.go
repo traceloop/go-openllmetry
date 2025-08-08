@@ -14,6 +14,11 @@ import (
 
 func main() {
 	ctx := context.Background()
+	
+	if len(os.Args) > 1 && os.Args[1] == "tool-calling" {
+		runToolCallingExample()
+		return
+	}
 
 	traceloop := sdk.NewClient(config.Config{
 		BaseURL: "api-staging.traceloop.com",
