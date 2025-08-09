@@ -1,29 +1,10 @@
 # Testing Tool Calling Without API Keys
 
-This directory contains several testing approaches for tool calling functionality that work in CI environments without requiring actual API keys.
+This directory contains testing for tool calling functionality that works in CI environments without requiring actual API keys.
 
-## Testing Approaches
+## Testing Approach
 
-### 1. Manual HTTP Mocking (`tool_calling_manual_test.go`)
-
-Uses Go's built-in `httptest` package to create mock HTTP responses.
-
-```bash
-# Run manual mock tests (no API key needed)
-go test -v -run TestToolCallingWithHTTPMock
-```
-
-**Pros:**
-- ✅ No external dependencies
-- ✅ Fast execution
-- ✅ Full control over responses
-- ✅ Works in CI without API keys
-
-**Cons:**
-- ❌ Manually maintained mock data
-- ❌ Can drift from real API responses
-
-### 2. VCR Recording (`tool_calling_test.go`)
+### VCR Recording (`tool_calling_test.go`)
 
 Uses `go-vcr` to record real API interactions and replay them in tests. **API keys are automatically sanitized** from recordings.
 
@@ -50,7 +31,7 @@ go test -v -run TestToolCallingWithMock
 - ❌ Requires initial recording with real API key
 - ❌ Additional dependency
 
-### 3. Integration Tests (Optional)
+### Integration Tests (Optional)
 
 Real API calls for full integration testing.
 
@@ -66,10 +47,7 @@ For GitHub Actions or other CI systems:
 ```yaml
 - name: Run Tests
   run: |
-    # Run mocked tests (no API keys needed)
-    go test -v -run TestToolCallingWithHTTPMock
-    
-    # Run VCR tests if cassettes exist
+    # Run VCR tests with pre-sanitized cassettes (no API keys needed)
     go test -v -run TestToolCallingWithMock
     
     # Skip integration tests in CI (or use secrets for API keys)
@@ -77,7 +55,7 @@ For GitHub Actions or other CI systems:
 
 ## Mock Data Structure
 
-The manual mock returns realistic OpenAI API responses:
+The VCR cassette contains realistic OpenAI API responses:
 
 ```json
 {
