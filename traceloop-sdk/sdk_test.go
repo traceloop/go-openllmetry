@@ -8,7 +8,6 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 
-	"github.com/traceloop/go-openllmetry/traceloop-sdk/config"
 	"github.com/traceloop/go-openllmetry/traceloop-sdk/dto"
 )
 
@@ -25,7 +24,7 @@ func TestLogPromptSpanAttributes(t *testing.T) {
 
 	// Create traceloop instance
 	tl := &Traceloop{
-		config: config.Config{
+		config: Config{
 			BaseURL: "https://api.traceloop.com",
 			APIKey:  "test-key",
 		},
@@ -84,8 +83,8 @@ func TestLogPromptSpanAttributes(t *testing.T) {
 		Duration: 1500,
 	}
 
-	// Log the prompt
-	err := tl.LogPrompt(context.Background(), toolCallAttrs)
+	// Log the prompt using legacy API
+	err := tl.LogPromptLegacy(context.Background(), toolCallAttrs)
 	if err != nil {
 		t.Fatalf("LogPrompt failed: %v", err)
 	}

@@ -7,9 +7,13 @@ import (
 
 	"github.com/kluctl/go-jinja2"
 	"github.com/sashabaranov/go-openai"
-	"github.com/traceloop/go-openllmetry/traceloop-sdk/dto"
 	"github.com/traceloop/go-openllmetry/traceloop-sdk/model"
 )
+
+type PromptsResponse struct {
+	Prompts     []model.Prompt `json:"prompts"`
+	Environment string         `json:"environment"`
+}
 
 func (instance *Traceloop) populatePromptRegistry() {
 	resp, err := instance.fetchPathWithRetry(PromptsPath, instance.config.BackoffConfig.MaxRetries)
@@ -20,21 +24,23 @@ func (instance *Traceloop) populatePromptRegistry() {
 	defer resp.Body.Close()
 	decoder := json.NewDecoder(resp.Body)
 
-	var response dto.PromptsResponse
+	var response PromptsResponse
 	err = decoder.Decode(&response)
 	if err != nil {
 		fmt.Println("Failed to decode response", err)
 		return
 	}
 
+	instance.registryMutex.Lock()
 	for _, prompt := range response.Prompts {
 		instance.promptRegistry[prompt.Key] = &prompt
 	}
+	instance.registryMutex.Unlock()
 }
 
 func (instance *Traceloop) pollPrompts() {
 	prompts := make(chan []model.Prompt)
-    errs := make(chan error)
+	errs := make(chan error)
 
 	instance.populatePromptRegistry()
 
@@ -51,6 +57,8 @@ func (instance *Traceloop) pollPrompts() {
 }
 
 func (instance *Traceloop) getPromptVersion(key string) (*model.PromptVersion, error) {
+	instance.registryMutex.RLock()
+	defer instance.registryMutex.RUnlock()
 	if instance.promptRegistry[key] == nil {
 		return nil, fmt.Errorf("prompt with key %s not found", key)
 	}
@@ -99,12 +107,12 @@ func (instance *Traceloop) GetOpenAIChatCompletionRequest(key string, variables 
 	}
 
 	return &openai.ChatCompletionRequest{
-		Model: promptVersion.LlmConfig.Model,
-		Temperature: promptVersion.LlmConfig.Temperature,
-		TopP: promptVersion.LlmConfig.TopP,
-		Stop: promptVersion.LlmConfig.Stop,
+		Model:            promptVersion.LlmConfig.Model,
+		Temperature:      promptVersion.LlmConfig.Temperature,
+		TopP:             promptVersion.LlmConfig.TopP,
+		Stop:             promptVersion.LlmConfig.Stop,
 		FrequencyPenalty: promptVersion.LlmConfig.FrequencyPenalty,
-		PresencePenalty: promptVersion.LlmConfig.PresencePenalty,
-		Messages: messages,
+		PresencePenalty:  promptVersion.LlmConfig.PresencePenalty,
+		Messages:         messages,
 	}, nil
 }

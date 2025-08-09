@@ -53,7 +53,7 @@ For a complete guide, go to our [docs](https://traceloop.com/docs/openllmetry/ge
 Install the SDK:
 
 ```bash
-go get traceloop-sdk
+go get github.com/traceloop/go-openllmetry/traceloop-sdk
 ```
 
 Then, initialize the SDK in your code:
@@ -65,19 +65,15 @@ import (
 	"context"
 
 	sdk "github.com/traceloop/go-openllmetry/traceloop-sdk"
-	"github.com/traceloop/go-openllmetry/traceloop-sdk/config"
 )
 
 func main() {
     ctx := context.Background()
 
-    traceloop := sdk.NewClient(config.Config{
-		BaseURL: "api.traceloop.com",
+    traceloop := sdk.NewClient(ctx, sdk.Config{
 		APIKey: os.Getenv("TRACELOOP_API_KEY"),
 	})
 	defer func() { traceloop.Shutdown(ctx) }()
-
-    traceloop.Initialize(ctx)
 }
 ```
 
@@ -88,14 +84,24 @@ Now, you need to decide where to export the traces to.
 ## ⏫ Supported (and tested) destinations
 
 - [x] [Traceloop](https://www.traceloop.com/docs/openllmetry/integrations/traceloop)
-- [x] [Dynatrace](https://www.traceloop.com/docs/openllmetry/integrations/dynatrace)
+- [x] [Axiom](https://www.traceloop.com/docs/openllmetry/integrations/axiom)
+- [x] [Azure Application Insights](https://www.traceloop.com/docs/openllmetry/integrations/azure)
 - [x] [Datadog](https://www.traceloop.com/docs/openllmetry/integrations/datadog)
-- [x] [New Relic](https://www.traceloop.com/docs/openllmetry/integrations/newrelic)
+- [x] [Dynatrace](https://www.traceloop.com/docs/openllmetry/integrations/dynatrace)
+- [x] [Grafana](https://www.traceloop.com/docs/openllmetry/integrations/grafana)
+- [x] [Highlight](https://www.traceloop.com/docs/openllmetry/integrations/highlight)
 - [x] [Honeycomb](https://www.traceloop.com/docs/openllmetry/integrations/honeycomb)
-- [x] [Grafana Tempo](https://www.traceloop.com/docs/openllmetry/integrations/grafana)
 - [x] [HyperDX](https://www.traceloop.com/docs/openllmetry/integrations/hyperdx)
-- [x] [SigNoz](https://www.traceloop.com/docs/openllmetry/integrations/signoz)
+- [x] [IBM Instana](https://www.traceloop.com/docs/openllmetry/integrations/instana)
+- [x] [KloudMate](https://www.traceloop.com/docs/openllmetry/integrations/kloudmate)
+- [x] [Langfuse](https://langfuse.com/docs/opentelemetry/example-openllmetry)
+- [x] [New Relic](https://www.traceloop.com/docs/openllmetry/integrations/newrelic)
 - [x] [OpenTelemetry Collector](https://www.traceloop.com/docs/openllmetry/integrations/otel-collector)
+- [x] [Service Now Cloud Observability](https://www.traceloop.com/docs/openllmetry/integrations/service-now)
+- [x] [SigNoz](https://www.traceloop.com/docs/openllmetry/integrations/signoz)
+- [x] [Sentry](https://www.traceloop.com/docs/openllmetry/integrations/sentry)
+- [x] [Splunk](https://www.traceloop.com/docs/openllmetry/integrations/splunk)
+
 
 See [our docs](https://traceloop.com/docs/openllmetry/integrations/exporting) for instructions on connecting to each one.
 
@@ -114,21 +120,16 @@ import (
 
 	"github.com/sashabaranov/go-openai"
 	sdk "github.com/traceloop/go-openllmetry/traceloop-sdk"
-	"github.com/traceloop/go-openllmetry/traceloop-sdk/config"
-	"github.com/traceloop/go-openllmetry/traceloop-sdk/dto"
 )
 
 func main() {
 	ctx := context.Background()
 
 	// Initialize Traceloop
-	traceloop := sdk.NewClient(config.Config{
-		BaseURL: "api.traceloop.com",
+	traceloop := sdk.NewClient(ctx, config.Config{
 		APIKey:  os.Getenv("TRACELOOP_API_KEY"),
 	})
 	defer func() { traceloop.Shutdown(ctx) }()
-
-	traceloop.Initialize(ctx)
 
 	// Call OpenAI like you normally would
 	resp, err := client.CreateChatCompletion(
@@ -144,40 +145,62 @@ func main() {
 		},
 	)
 
-	// Log the request and the response
-	log := dto.PromptLogAttributes{
-		Prompt: dto.Prompt{
-			Vendor: "openai",
-			Mode:   "chat",
-			Model:  request.Model,
-		},
-		Completion: dto.Completion{
-			Model: resp.Model,
-		},
-		Usage: dto.Usage{
-			TotalTokens:      resp.Usage.TotalTokens,
-			CompletionTokens: resp.Usage.CompletionTokens,
-			PromptTokens:     resp.Usage.PromptTokens,
-		},
-	}
+    var promptMsgs []sdk.Message
+    for i, message := range request.Messages {
+    	promptMsgs = append(promptMsgs, sdk.Message{
+    		Index:   i,
+    		Content: message.Content,
+    		Role:    message.Role,
+    	})
+    }
 
-	for i, message := range request.Messages {
-		log.Prompt.Messages = append(log.Prompt.Messages, dto.Message{
-			Index:   i,
-			Content: message.Content,
-			Role:    message.Role,
-		})
-	}
+	// Log the request
+    llmSpan, err := traceloop.LogPrompt(
+    	ctx,
+    	sdk.Prompt{
+    		Vendor: "openai",
+    		Mode:   "chat",
+    		Model: request.Model,
+    		Messages: promptMsgs,
+    	},
+    	sdk.TraceloopAttributes{
+    		WorkflowName: "example-workflow",
+    		EntityName:   "example-entity",
+    	},
+    )
+    if err != nil {
+    	fmt.Printf("LogPrompt error: %v\n", err)
+    	return
+    }
 
-	for _, choice := range resp.Choices {
-		log.Completion.Messages = append(log.Completion.Messages, dto.Message{
-			Index:   choice.Index,
-			Content: choice.Message.Content,
-			Role:    choice.Message.Role,
-		})
-	}
+    client := openai.NewClient(os.Getenv("OPENAI_API_KEY"))
+    resp, err := client.CreateChatCompletion(
+    	context.Background(),
+    	*request,
+    )
+    if err != nil {
+    	fmt.Printf("ChatCompletion error: %v\n", err)
+    	return
+    }
 
-	traceloop.LogPrompt(ctx, log)
+    var completionMsgs []sdk.Message
+    for _, choice := range resp.Choices {
+    	completionMsgs = append(completionMsgs, sdk.Message{
+    		Index:   choice.Index,
+    		Content: choice.Message.Content,
+    		Role:    choice.Message.Role,
+    	})
+    }
+
+	// Log the response
+    llmSpan.LogCompletion(ctx, sdk.Completion{
+    	Model:    resp.Model,
+    	Messages: completionMsgs,
+    }, sdk.Usage{
+    	TotalTokens:       resp.Usage.TotalTokens,
+    	CompletionTokens:  resp.Usage.CompletionTokens,
+    	PromptTokens:      resp.Usage.PromptTokens,
+    })
 }
 ```
 

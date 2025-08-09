@@ -1,6 +1,6 @@
 module github.com/traceloop/go-openllmetry/sample-app
 
-go 1.23.0
+go 1.23
 
 require (
 	github.com/openai/openai-go v0.1.0-alpha.35

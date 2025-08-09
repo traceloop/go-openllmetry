@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"go.opentelemetry.io/otel/attribute"
@@ -13,7 +15,6 @@ import (
 	apitrace "go.opentelemetry.io/otel/trace"
 
 	semconvai "github.com/traceloop/go-openllmetry/semconv-ai"
-	"github.com/traceloop/go-openllmetry/traceloop-sdk/config"
 	"github.com/traceloop/go-openllmetry/traceloop-sdk/dto"
 	"github.com/traceloop/go-openllmetry/traceloop-sdk/model"
 )
@@ -21,25 +22,37 @@ import (
 const PromptsPath = "/v1/traceloop/prompts"
 
 type Traceloop struct {
-    config            config.Config
-    promptRegistry    model.PromptRegistry
-	tracerProvider    *trace.TracerProvider
-    http.Client
+	config         Config
+	promptRegistry model.PromptRegistry
+	registryMutex  sync.RWMutex
+	tracerProvider *trace.TracerProvider
+	http.Client
 }
 
-func NewClient(config config.Config) *Traceloop {
-	return &Traceloop{
+type LLMSpan struct {
+	span apitrace.Span
+}
+
+func NewClient(ctx context.Context, config Config) (*Traceloop, error) {
+	instance := Traceloop{
 		config:         config,
 		promptRegistry: make(model.PromptRegistry),
 		Client:         http.Client{},
 	}
+
+	err := instance.initialize(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &instance, nil
 }
 
-func (instance *Traceloop) Initialize(ctx context.Context) {
+func (instance *Traceloop) initialize(ctx context.Context) error {
 	if instance.config.BaseURL == "" {
 		baseUrl := os.Getenv("TRACELOOP_BASE_URL")
-		if baseUrl == "" {		
-			instance.config.BaseURL = "https://api.traceloop.com"
+		if baseUrl == "" {
+			instance.config.BaseURL = "api.traceloop.com"
 		} else {
 			instance.config.BaseURL = baseUrl
 		}
@@ -54,57 +67,74 @@ func (instance *Traceloop) Initialize(ctx context.Context) {
 		}
 	}
 
-	fmt.Printf("Traceloop %s SDK initialized. Connecting to %s\n", instance.GetVersion(), instance.config.BaseURL)
+	log.Printf("Traceloop %s SDK initialized. Connecting to %s\n", Version(), instance.config.BaseURL)
 
 	instance.pollPrompts()
-	instance.initTracer(ctx, "GoExampleService")
+	err := instance.initTracer(ctx, instance.config.ServiceName)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func setMessagesAttribute(span *apitrace.Span, prefix string, messages []dto.Message) {
+func setMessagesAttribute(span apitrace.Span, prefix string, messages []Message) {
 	for _, message := range messages {
 		attrsPrefix := fmt.Sprintf("%s.%d", prefix, message.Index)
-		(*span).SetAttributes(
-			attribute.KeyValue{
-				Key:   attribute.Key(attrsPrefix + ".content"),
-				Value: attribute.StringValue(message.Content),
-			},
-			attribute.KeyValue{
-				Key:   attribute.Key(attrsPrefix + ".role"),
-				Value: attribute.StringValue(message.Role),
-			},
+		span.SetAttributes(
+			attribute.String(attrsPrefix+".content", message.Content),
+			attribute.String(attrsPrefix+".role", message.Role),
 		)
 
 		if len(message.ToolCalls) > 0 {
-			setMessageToolCallsAttribute(span, attrsPrefix, message.ToolCalls)
+			setToolCallsAttribute(span, attrsPrefix, message.ToolCalls)
 		}
 	}
 }
 
-func setMessageToolCallsAttribute(span *apitrace.Span, messagePrefix string, toolCalls []dto.ToolCall) {
+// Overload for DTO messages to support backward compatibility
+func setDTOMessagesAttribute(span apitrace.Span, prefix string, messages []dto.Message) {
+	for _, message := range messages {
+		attrsPrefix := fmt.Sprintf("%s.%d", prefix, message.Index)
+		span.SetAttributes(
+			attribute.String(attrsPrefix+".content", message.Content),
+			attribute.String(attrsPrefix+".role", message.Role),
+		)
+
+		if len(message.ToolCalls) > 0 {
+			setDTOMessageToolCallsAttribute(span, attrsPrefix, message.ToolCalls)
+		}
+	}
+}
+
+
+
+// Tool calling attribute helpers for new types
+func setToolCallsAttribute(span apitrace.Span, messagePrefix string, toolCalls []ToolCall) {
 	for i, toolCall := range toolCalls {
 		toolCallPrefix := fmt.Sprintf("%s.tool_calls.%d", messagePrefix, i)
-		(*span).SetAttributes(
-			attribute.KeyValue{
-				Key:   attribute.Key(toolCallPrefix + ".id"),
-				Value: attribute.StringValue(toolCall.ID),
-			},
-			attribute.KeyValue{
-				Key:   attribute.Key(toolCallPrefix + ".type"),
-				Value: attribute.StringValue(toolCall.Type),
-			},
-			attribute.KeyValue{
-				Key:   attribute.Key(toolCallPrefix + ".name"),
-				Value: attribute.StringValue(toolCall.Function.Name),
-			},
-			attribute.KeyValue{
-				Key:   attribute.Key(toolCallPrefix + ".arguments"),
-				Value: attribute.StringValue(toolCall.Function.Arguments),
-			},
+		span.SetAttributes(
+			attribute.String(toolCallPrefix+".id", toolCall.ID),
+			attribute.String(toolCallPrefix+".type", toolCall.Type),
+			attribute.String(toolCallPrefix+".name", toolCall.Function.Name),
+			attribute.String(toolCallPrefix+".arguments", toolCall.Function.Arguments),
 		)
 	}
 }
 
-func setCompletionsAttribute(span *apitrace.Span, messages []dto.Message) {
+func setDTOMessageToolCallsAttribute(span apitrace.Span, messagePrefix string, toolCalls []dto.ToolCall) {
+	for i, toolCall := range toolCalls {
+		toolCallPrefix := fmt.Sprintf("%s.tool_calls.%d", messagePrefix, i)
+		span.SetAttributes(
+			attribute.String(toolCallPrefix+".id", toolCall.ID),
+			attribute.String(toolCallPrefix+".type", toolCall.Type),
+			attribute.String(toolCallPrefix+".name", toolCall.Function.Name),
+			attribute.String(toolCallPrefix+".arguments", toolCall.Function.Arguments),
+		)
+	}
+}
+
+func setDTOCompletionsAttribute(span apitrace.Span, messages []dto.Message) {
 	for _, message := range messages {
 		prefix := fmt.Sprintf("llm.completions.%d", message.Index)
 		attrs := []attribute.KeyValue{
@@ -123,36 +153,27 @@ func setCompletionsAttribute(span *apitrace.Span, messages []dto.Message) {
 			)
 		}
 		
-		(*span).SetAttributes(attrs...)
+		span.SetAttributes(attrs...)
 	}
 }
 
-func setToolsAttribute(span *apitrace.Span, tools []dto.Tool) {
+func setToolsAttribute(span apitrace.Span, tools []Tool) {
 	if len(tools) == 0 {
 		return
 	}
 
 	for i, tool := range tools {
 		prefix := fmt.Sprintf("%s.%d", string(semconvai.LLMRequestFunctions), i)
-		(*span).SetAttributes(
-			attribute.KeyValue{
-				Key:   attribute.Key(prefix + ".name"),
-				Value: attribute.StringValue(tool.Function.Name),
-			},
-			attribute.KeyValue{
-				Key:   attribute.Key(prefix + ".description"),
-				Value: attribute.StringValue(tool.Function.Description),
-			},
+		span.SetAttributes(
+			attribute.String(prefix+".name", tool.Function.Name),
+			attribute.String(prefix+".description", tool.Function.Description),
 		)
 
 		if tool.Function.Parameters != nil {
 			parametersJSON, err := json.Marshal(tool.Function.Parameters)
 			if err == nil {
-				(*span).SetAttributes(
-					attribute.KeyValue{
-						Key:   attribute.Key(prefix + ".parameters"),
-						Value: attribute.StringValue(string(parametersJSON)),
-					},
+				span.SetAttributes(
+					attribute.String(prefix+".parameters", string(parametersJSON)),
 				)
 			} else {
 				fmt.Printf("Failed to marshal tool parameters for %s: %v\n", tool.Function.Name, err)
@@ -161,7 +182,79 @@ func setToolsAttribute(span *apitrace.Span, tools []dto.Tool) {
 	}
 }
 
-func (instance *Traceloop) LogPrompt(ctx context.Context, attrs dto.PromptLogAttributes) error {
+func setDTOToolsAttribute(span apitrace.Span, tools []dto.Tool) {
+	if len(tools) == 0 {
+		return
+	}
+
+	for i, tool := range tools {
+		prefix := fmt.Sprintf("%s.%d", string(semconvai.LLMRequestFunctions), i)
+		span.SetAttributes(
+			attribute.String(prefix+".name", tool.Function.Name),
+			attribute.String(prefix+".description", tool.Function.Description),
+		)
+
+		if tool.Function.Parameters != nil {
+			parametersJSON, err := json.Marshal(tool.Function.Parameters)
+			if err == nil {
+				span.SetAttributes(
+					attribute.String(prefix+".parameters", string(parametersJSON)),
+				)
+			} else {
+				fmt.Printf("Failed to marshal tool parameters for %s: %v\n", tool.Function.Name, err)
+			}
+		}
+	}
+}
+
+func (instance *Traceloop) tracerName() string {
+	if instance.config.TracerName != "" {
+		return instance.config.TracerName
+	} else {
+		return "traceloop.tracer"
+	}
+}
+
+func (instance *Traceloop) getTracer() apitrace.Tracer {
+	return (*instance.tracerProvider).Tracer(instance.tracerName())
+}
+
+// New workflow-based API
+func (instance *Traceloop) LogPrompt(ctx context.Context, prompt Prompt, workflowAttrs WorkflowAttributes) (LLMSpan, error) {
+	spanName := fmt.Sprintf("%s.%s", prompt.Vendor, prompt.Mode)
+	_, span := instance.getTracer().Start(ctx, spanName)
+
+	span.SetAttributes(
+		semconvai.LLMVendor.String(prompt.Vendor),
+		semconvai.LLMRequestModel.String(prompt.Model),
+		semconvai.LLMRequestType.String(prompt.Mode),
+		semconvai.TraceloopWorkflowName.String(workflowAttrs.Name),
+	)
+
+	setMessagesAttribute(span, "llm.prompts", prompt.Messages)
+	setToolsAttribute(span, prompt.Tools)
+
+	return LLMSpan{
+		span: span,
+	}, nil
+}
+
+func (llmSpan *LLMSpan) LogCompletion(ctx context.Context, completion Completion, usage Usage) error {
+	llmSpan.span.SetAttributes(
+		semconvai.LLMResponseModel.String(completion.Model),
+		semconvai.LLMUsageTotalTokens.Int(usage.TotalTokens),
+		semconvai.LLMUsageCompletionTokens.Int(usage.CompletionTokens),
+		semconvai.LLMUsagePromptTokens.Int(usage.PromptTokens),
+	)
+
+	setMessagesAttribute(llmSpan.span, "llm.completions", completion.Messages)
+
+	defer llmSpan.span.End()
+	return nil
+}
+
+// Legacy DTO-based API for backward compatibility
+func (instance *Traceloop) LogPromptLegacy(ctx context.Context, attrs dto.PromptLogAttributes) error {
 	spanName := fmt.Sprintf("%s.%s", attrs.Prompt.Vendor, attrs.Prompt.Mode)
 	
 	// Calculate start time based on duration
@@ -169,7 +262,7 @@ func (instance *Traceloop) LogPrompt(ctx context.Context, attrs dto.PromptLogAtt
 	startTime := endTime.Add(-time.Duration(attrs.Duration) * time.Millisecond)
 	
 	// Create span with historical start time
-	spanCtx, span := (*instance.tracerProvider).Tracer(os.Args[0]).Start(
+	spanCtx, span := instance.getTracer().Start(
 		ctx, 
 		spanName,
 		apitrace.WithTimestamp(startTime),
@@ -193,18 +286,19 @@ func (instance *Traceloop) LogPrompt(ctx context.Context, attrs dto.PromptLogAtt
 		semconvai.LLMCompletions.String(string(completionsJSON)),
 	)
 
-	setMessagesAttribute(&span, "llm.prompts", attrs.Prompt.Messages)
-	setCompletionsAttribute(&span, attrs.Completion.Messages)
-	setToolsAttribute(&span, attrs.Prompt.Tools)
+	setDTOMessagesAttribute(span, "llm.prompts", attrs.Prompt.Messages)
+	setDTOCompletionsAttribute(span, attrs.Completion.Messages)
+	setDTOToolsAttribute(span, attrs.Prompt.Tools)
 
 	// End span with correct end time
 	span.End(apitrace.WithTimestamp(endTime))
 
 	_ = spanCtx // avoid unused variable
-
 	return nil
 }
 
 func (instance *Traceloop) Shutdown(ctx context.Context) {
-	instance.tracerProvider.Shutdown(ctx)
+	if instance.tracerProvider != nil {
+		instance.tracerProvider.Shutdown(ctx)
+	}
 }
