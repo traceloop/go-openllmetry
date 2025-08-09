@@ -1,8 +1,6 @@
 module github.com/traceloop/go-openllmetry/traceloop-sdk
 
-go 1.23.0
-
-toolchain go1.23.12
+go 1.23
 
 require (
 	github.com/kluctl/go-jinja2 v0.0.0-20240108142937-8839259d2537
