@@ -1,6 +1,6 @@
 module github.com/traceloop/go-openllmetry/sample-app
 
-go 1.23
+go 1.23.0
 
 require (
 	github.com/openai/openai-go v0.1.0-alpha.35
@@ -25,6 +25,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/jinzhu/copier v0.4.0 // indirect
+	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/kluctl/go-embed-python v0.0.0-3.11.6-20231002-1 // indirect
 	github.com/kluctl/go-jinja2 v0.0.0-20240108142937-8839259d2537 // indirect
 	github.com/rogpeppe/go-internal v1.13.1 // indirect

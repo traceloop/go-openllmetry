@@ -25,14 +25,8 @@ func getWeather(location, unit string) string {
 func runToolCallingExample() {
 	ctx := context.Background()
 
-	baseURL := os.Getenv("TRACELOOP_BASE_URL")
-	if baseURL == "" {
-		baseURL = "https://api.traceloop.com"
-	}
-	
 	traceloop, err := sdk.NewClient(ctx, sdk.Config{
-		BaseURL: baseURL,
-		APIKey:  os.Getenv("TRACELOOP_API_KEY"),
+		APIKey: os.Getenv("TRACELOOP_API_KEY"),
 	})
 	if err != nil {
 		log.Printf("NewClient error: %v", err)

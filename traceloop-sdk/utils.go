@@ -3,12 +3,17 @@ package traceloop
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/cenkalti/backoff"
 )
 
 func (instance *Traceloop) fetchPath(path string) (*http.Response, error) {
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/%s", instance.config.BaseURL, path), nil)
+	baseURL := instance.config.BaseURL
+	if !strings.HasPrefix(baseURL, "http://") && !strings.HasPrefix(baseURL, "https://") {
+		baseURL = "https://" + baseURL
+	}
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s%s", baseURL, path), nil)
 	if err != nil {
 		fmt.Printf("Failed to create request: %v\n", err)
 		return nil, err
