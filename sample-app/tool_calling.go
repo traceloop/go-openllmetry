@@ -94,8 +94,8 @@ func runToolCallingExample() {
 	ctx := context.Background()
 
 	traceloop := sdk.NewClient(config.Config{
-		// BaseURL: os.Getenv("TRACELOOP_BASE_URL"),
-		APIKey: "tl_4be59d06bb644ced90f8b21e2924a31e",
+		BaseURL: os.Getenv("TRACELOOP_BASE_URL"),
+		APIKey:  os.Getenv("TRACELOOP_API_KEY"),
 	})
 	defer func() { traceloop.Shutdown(ctx) }()
 
