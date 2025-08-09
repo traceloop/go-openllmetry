@@ -1,0 +1,4 @@
+# VCR cassettes may contain sensitive data during development
+# Only include pre-sanitized mock cassettes
+testdata/*
+!testdata/tool_calling_cassette.yaml

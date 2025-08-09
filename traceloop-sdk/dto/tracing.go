@@ -15,7 +15,7 @@ type ToolFunction struct {
 
 type Tool struct {
 	Type 		string 			`json:"type"`
-	Function 	ToolFunction 	`json:"function"`
+	Function 	ToolFunction 	`json:"function,omitempty"`
 }
 
 type ToolCall struct {

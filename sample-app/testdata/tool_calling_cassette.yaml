@@ -1,0 +1,59 @@
+---
+version: 2
+interactions:
+    - request:
+        body: |
+            {"messages":[{"role":"user","content":"What's the weather like in San Francisco?"}],"model":"gpt-4o-mini","tools":[{"type":"function","function":{"name":"get_weather","description":"Get the current weather for a given location","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city and state, e.g. San Francisco, CA"}},"required":["location"]}}}]}
+        form: {}
+        headers:
+            Accept:
+                - application/json
+            Content-Type:
+                - application/json
+            User-Agent:
+                - OpenAI/Go/v0.1.0-alpha.35
+        url: https://api.openai.com/v1/chat/completions
+        method: POST
+      response:
+        body: |
+            {
+              "id": "chatcmpl-mock123456",
+              "object": "chat.completion",
+              "created": 1699014393,
+              "model": "gpt-4o-mini-2024-07-18",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": "",
+                    "tool_calls": [
+                      {
+                        "id": "call_YkIfypBQrmpUpxsKuS9aNdKg",
+                        "type": "function",
+                        "function": {
+                          "name": "get_weather",
+                          "arguments": "{\"location\":\"San Francisco, CA\"}"
+                        }
+                      }
+                    ]
+                  },
+                  "logprobs": null,
+                  "finish_reason": "tool_calls"
+                }
+              ],
+              "usage": {
+                "prompt_tokens": 82,
+                "completion_tokens": 17,
+                "total_tokens": 99
+              },
+              "system_fingerprint": "mock_fingerprint"
+            }
+        headers:
+            Content-Type:
+                - application/json
+            Date:
+                - Wed, 09 Aug 2025 19:00:00 GMT
+        status: 200 OK
+        code: 200
+        duration: 500ms

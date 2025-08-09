@@ -89,6 +89,10 @@ func setMessageToolCallsAttribute(span *apitrace.Span, messagePrefix string, too
 				Value: attribute.StringValue(toolCall.ID),
 			},
 			attribute.KeyValue{
+				Key:   attribute.Key(toolCallPrefix + ".type"),
+				Value: attribute.StringValue(toolCall.Type),
+			},
+			attribute.KeyValue{
 				Key:   attribute.Key(toolCallPrefix + ".name"),
 				Value: attribute.StringValue(toolCall.Function.Name),
 			},
@@ -113,6 +117,7 @@ func setCompletionsAttribute(span *apitrace.Span, messages []dto.Message) {
 			toolCallPrefix := fmt.Sprintf("%s.tool_calls.%d", prefix, i)
 			attrs = append(attrs, 
 				attribute.KeyValue{Key: attribute.Key(toolCallPrefix + ".id"), Value: attribute.StringValue(toolCall.ID)},
+				attribute.KeyValue{Key: attribute.Key(toolCallPrefix + ".type"), Value: attribute.StringValue(toolCall.Type)},
 				attribute.KeyValue{Key: attribute.Key(toolCallPrefix + ".name"), Value: attribute.StringValue(toolCall.Function.Name)},
 				attribute.KeyValue{Key: attribute.Key(toolCallPrefix + ".arguments"), Value: attribute.StringValue(toolCall.Function.Arguments)},
 			)
@@ -149,6 +154,8 @@ func setToolsAttribute(span *apitrace.Span, tools []dto.Tool) {
 						Value: attribute.StringValue(string(parametersJSON)),
 					},
 				)
+			} else {
+				fmt.Printf("Failed to marshal tool parameters for %s: %v\n", tool.Function.Name, err)
 			}
 		}
 	}
