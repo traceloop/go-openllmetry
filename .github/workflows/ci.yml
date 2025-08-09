@@ -21,8 +21,8 @@ jobs:
           go-version: ${{ matrix.go-version }}
           cache: false
       - name: Install dependencies
-        run: find . -name go.mod -execdir go get . \;
+        run: GOWORK=off find . -name go.mod -execdir go get . \;
       - name: Build
-        run: find . -name go.mod -execdir go build . \;
+        run: GOWORK=off find . -name go.mod -execdir go build . \;
       - name: Test
-        run: find . -name go.mod -execdir go test ./... \;
+        run: GOWORK=off find . -name go.mod -execdir go test ./... \;
