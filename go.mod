@@ -1,6 +1,6 @@
 module github.com/traceloop/go-openllmetry
 
-go 1.21
+go 1.23
 
 replace github.com/traceloop/go-openllmetry/traceloop-sdk => ./traceloop-sdk
 
