@@ -195,8 +195,11 @@ func runToolCallingExample() {
 				} else {
 					if params.Unit == "" {
 						params.Unit = "F"
+					} else if params.Unit != "C" && params.Unit != "F" {
+						result = fmt.Sprintf("Invalid temperature unit '%s'. Must be 'C' or 'F'", params.Unit)
+					} else {
+						result = getWeather(params.Location, params.Unit)
 					}
-					result = getWeather(params.Location, params.Unit)
 				}
 			} else {
 				result = fmt.Sprintf("Unknown function: %s", toolCall.Function.Name)
