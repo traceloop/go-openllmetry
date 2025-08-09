@@ -2,6 +2,7 @@ package traceloop
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -76,6 +77,17 @@ func (instance *Traceloop) initialize(ctx context.Context) error {
 	return nil
 }
 
+func setMessageToolCallsAttribute(span apitrace.Span, messagePrefix string, toolCalls []ToolCall) {
+	for i, toolCall := range toolCalls {
+		toolCallPrefix := fmt.Sprintf("%s.tool_calls.%d", messagePrefix, i)
+		span.SetAttributes(
+			attribute.String(toolCallPrefix+".id", toolCall.ID),
+			attribute.String(toolCallPrefix+".name", toolCall.Function.Name),
+			attribute.String(toolCallPrefix+".arguments", toolCall.Function.Arguments),
+		)
+	}
+}
+
 func setMessagesAttribute(span apitrace.Span, prefix string, messages []Message) {
 	for _, message := range messages {
 		attrsPrefix := fmt.Sprintf("%s.%d", prefix, message.Index)
@@ -83,6 +95,33 @@ func setMessagesAttribute(span apitrace.Span, prefix string, messages []Message)
 			attribute.String(attrsPrefix+".content", message.Content),
 			attribute.String(attrsPrefix+".role", message.Role),
 		)
+
+		if len(message.ToolCalls) > 0 {
+			setMessageToolCallsAttribute(span, attrsPrefix, message.ToolCalls)
+		}
+	}
+}
+
+func setToolsAttribute(span apitrace.Span, tools []Tool) {
+	if len(tools) == 0 {
+		return
+	}
+
+	for i, tool := range tools {
+		prefix := fmt.Sprintf("%s.%d", string(semconvai.LLMRequestFunctions), i)
+		span.SetAttributes(
+			attribute.String(prefix+".name", tool.Function.Name),
+			attribute.String(prefix+".description", tool.Function.Description),
+		)
+
+		if tool.Function.Parameters != nil {
+			parametersJSON, err := json.Marshal(tool.Function.Parameters)
+			if err == nil {
+				span.SetAttributes(
+					attribute.String(prefix+".parameters", string(parametersJSON)),
+				)
+			}
+		}
 	}
 }
 
@@ -110,6 +149,7 @@ func (instance *Traceloop) LogPrompt(ctx context.Context, prompt Prompt, workflo
 	)
 
 	setMessagesAttribute(span, "llm.prompts", prompt.Messages)
+	setToolsAttribute(span, prompt.Tools)
 
 	return LLMSpan{
 		span: span,
