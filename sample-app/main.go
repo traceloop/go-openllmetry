@@ -39,9 +39,6 @@ func workflowExample() {
 	}
 	defer func() { traceloop.Shutdown(ctx) }()
 
-	// Wait a bit for prompt registry to populate
-	time.Sleep(2 * time.Second)
-	
 	// Get prompt from registry
 	request, err := traceloop.GetOpenAIChatCompletionRequest("question_answering", map[string]interface{}{
 		"date":        time.Now().Format("01/02"),

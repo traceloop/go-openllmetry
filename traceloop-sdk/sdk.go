@@ -150,15 +150,11 @@ func (instance *Traceloop) LogPrompt(ctx context.Context, prompt Prompt, workflo
 	spanName := fmt.Sprintf("%s.%s", prompt.Vendor, prompt.Mode)
 	_, span := instance.getTracer().Start(ctx, spanName)
 
-	// Serialize messages to JSON for main attributes
-	promptsJSON, _ := json.Marshal(prompt.Messages)
-
 	attrs := []attribute.KeyValue{
 		semconvai.LLMVendor.String(prompt.Vendor),
 		semconvai.LLMRequestModel.String(prompt.Model),
 		semconvai.LLMRequestType.String(prompt.Mode),
 		semconvai.TraceloopWorkflowName.String(workflowAttrs.Name),
-		semconvai.LLMPrompts.String(string(promptsJSON)),
 	}
 
 	// Add association properties if provided
@@ -176,15 +172,11 @@ func (instance *Traceloop) LogPrompt(ctx context.Context, prompt Prompt, workflo
 }
 
 func (llmSpan *LLMSpan) LogCompletion(ctx context.Context, completion Completion, usage Usage) error {
-	// Serialize messages to JSON for main attributes
-	completionsJSON, _ := json.Marshal(completion.Messages)
-
 	llmSpan.span.SetAttributes(
 		semconvai.LLMResponseModel.String(completion.Model),
 		semconvai.LLMUsageTotalTokens.Int(usage.TotalTokens),
 		semconvai.LLMUsageCompletionTokens.Int(usage.CompletionTokens),
 		semconvai.LLMUsagePromptTokens.Int(usage.PromptTokens),
-		semconvai.LLMCompletions.String(string(completionsJSON)),
 	)
 
 	setMessagesAttribute(llmSpan.span, "llm.completions", completion.Messages)
