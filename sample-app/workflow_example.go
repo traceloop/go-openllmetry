@@ -10,7 +10,7 @@ import (
 	tlp "github.com/traceloop/go-openllmetry/traceloop-sdk"
 )
 
-func main() {
+func workflowMain() {
 	ctx := context.Background()
 
 	traceloop, err := tlp.NewClient(ctx, tlp.Config{

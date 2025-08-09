@@ -8,12 +8,9 @@ import (
 
 	"github.com/sashabaranov/go-openai"
 	sdk "github.com/traceloop/go-openllmetry/traceloop-sdk"
-	"github.com/traceloop/go-openllmetry/traceloop-sdk/dto"
 )
 
 func main() {
-	ctx := context.Background()
-	
 	if len(os.Args) > 1 && os.Args[1] == "tool-calling" {
 		runToolCallingExample()
 		return
@@ -107,7 +104,6 @@ func workflowExample() {
 func legacyExample() {
 	ctx := context.Background()
 
-	// For backward compatibility, provide a constructor that mimics old API
 	traceloop, err := sdk.NewClient(ctx, sdk.Config{
 		BaseURL: "https://api.traceloop.com",
 		APIKey:  os.Getenv("TRACELOOP_API_KEY"),
@@ -124,6 +120,29 @@ func legacyExample() {
 		return
 	}
 	
+	// Create prompt using new API
+	var promptMessages []sdk.Message
+	for i, message := range request.Messages {
+		promptMessages = append(promptMessages, sdk.Message{
+			Index:   i,
+			Content: message.Content,
+			Role:    message.Role,
+		})
+	}
+
+	llmSpan, err := traceloop.LogPrompt(ctx, sdk.Prompt{
+		Vendor:   "openai",
+		Mode:     "chat",
+		Model:    request.Model,
+		Messages: promptMessages,
+	}, sdk.WorkflowAttributes{
+		Name: "legacy-example",
+	})
+	if err != nil {
+		fmt.Printf("LogPrompt error: %v\n", err)
+		return
+	}
+	
 	client := openai.NewClient(os.Getenv("OPENAI_API_KEY"))
 	resp, err := client.CreateChatCompletion(
 		context.Background(),
@@ -137,40 +156,25 @@ func legacyExample() {
 
 	fmt.Println(resp.Choices[0].Message.Content)
 
-	log := dto.PromptLogAttributes{
-		Prompt: dto.Prompt{
-			Vendor: "openai",
-			Mode:   "chat",
-			Model: request.Model,
-		},
-		Completion: dto.Completion{
-			Model: resp.Model,
-		},
-		Usage: dto.Usage{
-			TotalTokens: resp.Usage.TotalTokens,
-			CompletionTokens: resp.Usage.CompletionTokens,
-			PromptTokens: resp.Usage.PromptTokens,
-		},
-		Traceloop: dto.TraceloopAttributes{
-			WorkflowName: "legacy-example",
-		},
-	}
-
-	for i, message := range request.Messages {
-		log.Prompt.Messages = append(log.Prompt.Messages, dto.Message{
-			Index:   i,
-			Content: message.Content,
-			Role:    message.Role,
-		})
-	}
-
+	// Log completion using new API
+	var completionMessages []sdk.Message
 	for _, choice := range resp.Choices {
-		log.Completion.Messages = append(log.Completion.Messages, dto.Message{
+		completionMessages = append(completionMessages, sdk.Message{
 			Index:   choice.Index,
 			Content: choice.Message.Content,
 			Role:    choice.Message.Role,
 		})
 	}
 
-	traceloop.LogPromptLegacy(ctx, log)
+	err = llmSpan.LogCompletion(ctx, sdk.Completion{
+		Model:    resp.Model,
+		Messages: completionMessages,
+	}, sdk.Usage{
+		TotalTokens:      resp.Usage.TotalTokens,
+		CompletionTokens: resp.Usage.CompletionTokens,
+		PromptTokens:     resp.Usage.PromptTokens,
+	})
+	if err != nil {
+		fmt.Printf("LogCompletion error: %v\n", err)
+	}
 }

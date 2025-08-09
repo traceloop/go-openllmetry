@@ -4,14 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"time"
 
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
 	sdk "github.com/traceloop/go-openllmetry/traceloop-sdk"
-	"github.com/traceloop/go-openllmetry/traceloop-sdk/config"
-	"github.com/traceloop/go-openllmetry/traceloop-sdk/dto"
 )
 
 type WeatherParams struct {
@@ -23,51 +22,35 @@ func getWeather(location, unit string) string {
 	return fmt.Sprintf("The weather in %s is sunny and 72°%s", location, unit)
 }
 
-func convertOpenAIToolCallsToDTO(toolCalls []openai.ChatCompletionMessageToolCall) []dto.ToolCall {
-	var dtoToolCalls []dto.ToolCall
-	for _, tc := range toolCalls {
-		dtoToolCalls = append(dtoToolCalls, dto.ToolCall{
-			ID:   tc.ID,
-			Type: string(tc.Type),
-			Function: dto.ToolCallFunction{
-				Name:      tc.Function.Name,
-				Arguments: tc.Function.Arguments,
-			},
-		})
-	}
-	return dtoToolCalls
-}
+func runToolCallingExample() {
+	ctx := context.Background()
 
-func createWeatherTool() openai.ChatCompletionToolParam {
-	return openai.ChatCompletionToolParam{
-		Type: openai.F(openai.ChatCompletionToolTypeFunction),
-		Function: openai.F(openai.FunctionDefinitionParam{
-			Name:        openai.F("get_weather"),
-			Description: openai.F("Get the current weather for a given location"),
-			Parameters: openai.F(openai.FunctionParameters{
-				"type": "object",
-				"properties": map[string]interface{}{
-					"location": map[string]interface{}{
-						"type":        "string",
-						"description": "The city and state, e.g. San Francisco, CA",
-					},
-					"unit": map[string]interface{}{
-						"type":        "string",
-						"enum":        []string{"C", "F"},
-						"description": "The unit for temperature",
-					},
-				},
-				"required": []string{"location"},
-			}),
-		}),
+	baseURL := os.Getenv("TRACELOOP_BASE_URL")
+	if baseURL == "" {
+		baseURL = "https://api.traceloop.com"
 	}
-}
+	
+	traceloop, err := sdk.NewClient(ctx, sdk.Config{
+		BaseURL: baseURL,
+		APIKey:  os.Getenv("TRACELOOP_API_KEY"),
+	})
+	if err != nil {
+		log.Printf("NewClient error: %v", err)
+		return
+	}
+	defer func() { traceloop.Shutdown(ctx) }()
 
-func convertToolsToDTO() []dto.Tool {
-	return []dto.Tool{
+	client := openai.NewClient(
+		option.WithAPIKey(os.Getenv("OPENAI_API_KEY")),
+	)
+
+	userPrompt := "What's the weather like in San Francisco?"
+	
+	// Define tools
+	tools := []sdk.Tool{
 		{
 			Type: "function",
-			Function: dto.ToolFunction{
+			Function: sdk.ToolFunction{
 				Name:        "get_weather",
 				Description: "Get the current weather for a given location",
 				Parameters: map[string]interface{}{
@@ -79,8 +62,8 @@ func convertToolsToDTO() []dto.Tool {
 						},
 						"unit": map[string]interface{}{
 							"type":        "string",
-							"enum":        []string{"C", "F"},
-							"description": "The unit for temperature",
+							"enum":        []string{"celsius", "fahrenheit"},
+							"description": "The unit of temperature",
 						},
 					},
 					"required": []string{"location"},
@@ -88,37 +71,70 @@ func convertToolsToDTO() []dto.Tool {
 			},
 		},
 	}
-}
 
-func runToolCallingExample() {
-	ctx := context.Background()
-
-	traceloop := sdk.NewClient(config.Config{
-		BaseURL: os.Getenv("TRACELOOP_BASE_URL"),
-		APIKey:  os.Getenv("TRACELOOP_API_KEY"),
-	})
-	defer func() { traceloop.Shutdown(ctx) }()
-
-	traceloop.Initialize(ctx)
-
-	client := openai.NewClient(
-		option.WithAPIKey(os.Getenv("OPENAI_API_KEY")),
-	)
-
-	tools := []openai.ChatCompletionToolParam{
-		createWeatherTool(),
+	// Create prompt
+	prompt := sdk.Prompt{
+		Vendor: "openai",
+		Mode:   "chat",
+		Model:  "gpt-4o-mini",
+		Messages: []sdk.Message{
+			{
+				Index:   0,
+				Role:    "user",
+				Content: userPrompt,
+			},
+		},
+		Tools: tools,
 	}
 
-	userPrompt := "What's the weather like in San Francisco?"
-	fmt.Printf("User: %s\n", userPrompt)
+	workflowAttrs := sdk.WorkflowAttributes{
+		Name: "tool-calling-example",
+		AssociationProperties: map[string]string{
+			"user_id": "demo-user",
+		},
+	}
 
+	fmt.Printf("User: %s\n", userPrompt)
+	
+	// Log the prompt
+	llmSpan, err := traceloop.LogPrompt(ctx, prompt, workflowAttrs)
+	if err != nil {
+		fmt.Printf("Error logging prompt: %v\n", err)
+		return
+	}
+
+	// Make API call to OpenAI
 	startTime := time.Now()
 	resp, err := client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
-		Model: openai.F(openai.ChatModelGPT4oMini),
 		Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
 			openai.UserMessage(userPrompt),
 		}),
-		Tools: openai.F(tools),
+		Model: openai.F(openai.ChatModelGPT4oMini),
+		Tools: openai.F([]openai.ChatCompletionToolParam{
+			{
+				Type: openai.F(openai.ChatCompletionToolTypeFunction),
+				Function: openai.F(openai.FunctionDefinitionParam{
+					Name:        openai.F("get_weather"),
+					Description: openai.F("Get the current weather for a given location"),
+					Parameters: openai.F(openai.FunctionParameters{
+						"type": "object",
+						"properties": map[string]interface{}{
+							"location": map[string]interface{}{
+								"type":        "string",
+								"description": "The city and state, e.g. San Francisco, CA",
+							},
+							"unit": map[string]interface{}{
+								"type":        "string",
+								"enum":        []string{"celsius", "fahrenheit"},
+								"description": "The unit of temperature",
+							},
+						},
+						"required": []string{"location"},
+					}),
+				}),
+			},
+		}),
+		Temperature: openai.F(0.7),
 	})
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
@@ -128,196 +144,68 @@ func runToolCallingExample() {
 
 	fmt.Printf("\nAssistant: %s\n", resp.Choices[0].Message.Content)
 
-	// Log the first API call (with tool calling)
-	firstLog := dto.PromptLogAttributes{
-		Prompt: dto.Prompt{
-			Vendor:      "openai",
-			Mode:        "chat",
-			Model:       string(openai.ChatModelGPT4oMini),
-			Temperature: 0.7,
-			Tools:       convertToolsToDTO(),
-			Messages: []dto.Message{
-				{
-					Index:   0,
-					Content: userPrompt,
-					Role:    "user",
-				},
-			},
-		},
-		Completion: dto.Completion{
-			Model: resp.Model,
-			Messages: []dto.Message{
-				{
-					Index:     0,
-					Content:   resp.Choices[0].Message.Content,
-					Role:      "assistant",
-					ToolCalls: convertOpenAIToolCallsToDTO(resp.Choices[0].Message.ToolCalls),
-				},
-			},
-		},
-		Usage: dto.Usage{
-			TotalTokens:      int(resp.Usage.TotalTokens),
-			CompletionTokens: int(resp.Usage.CompletionTokens),
-			PromptTokens:     int(resp.Usage.PromptTokens),
-		},
-		Duration: int(duration.Milliseconds()),
+	// Convert response to our format
+	var completionMessages []sdk.Message
+	for _, choice := range resp.Choices {
+		message := sdk.Message{
+			Index:   int(choice.Index),
+			Role:    string(choice.Message.Role),
+			Content: choice.Message.Content,
+		}
+		
+		// Convert tool calls if present
+		if len(choice.Message.ToolCalls) > 0 {
+			for _, toolCall := range choice.Message.ToolCalls {
+				message.ToolCalls = append(message.ToolCalls, sdk.ToolCall{
+					ID:   toolCall.ID,
+					Type: string(toolCall.Type),
+					Function: sdk.ToolCallFunction{
+						Name:      toolCall.Function.Name,
+						Arguments: toolCall.Function.Arguments,
+					},
+				})
+			}
+		}
+		completionMessages = append(completionMessages, message)
 	}
 
-	if err := traceloop.LogPrompt(ctx, firstLog); err != nil {
-		fmt.Printf("Error logging first API call: %v\n", err)
+	// Log the completion
+	completion := sdk.Completion{
+		Model:    resp.Model,
+		Messages: completionMessages,
 	}
 
+	usage := sdk.Usage{
+		TotalTokens:      int(resp.Usage.TotalTokens),
+		CompletionTokens: int(resp.Usage.CompletionTokens),
+		PromptTokens:     int(resp.Usage.PromptTokens),
+	}
+
+	err = llmSpan.LogCompletion(ctx, completion, usage)
+	if err != nil {
+		fmt.Printf("Error logging completion: %v\n", err)
+		return
+	}
+
+	// If tool calls were made, execute them
 	if len(resp.Choices[0].Message.ToolCalls) > 0 {
 		fmt.Println("\nTool calls requested:")
 
-		var toolMessages []openai.ChatCompletionMessageParamUnion
-		var toolCallResults []struct{
-			ID string
-			Result string
-		}
-		
-		toolMessages = append(toolMessages, openai.UserMessage(userPrompt))
-		
-		toolMessages = append(toolMessages, openai.ChatCompletionMessage{
-			Role:      openai.ChatCompletionMessageRoleAssistant,
-			Content:   resp.Choices[0].Message.Content,
-			ToolCalls: resp.Choices[0].Message.ToolCalls,
-		})
-
 		for _, toolCall := range resp.Choices[0].Message.ToolCalls {
-			fmt.Printf("- Calling %s with arguments: %s\n", toolCall.Function.Name, toolCall.Function.Arguments)
-
-			var result string
 			if toolCall.Function.Name == "get_weather" {
+				fmt.Printf("Tool call: %s with args: %s\n", toolCall.Function.Name, toolCall.Function.Arguments)
+				
 				var params WeatherParams
 				if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &params); err != nil {
-					result = fmt.Sprintf("Error parsing parameters: %v", err)
-				} else {
-					if params.Unit == "" {
-						params.Unit = "F"
-					} else if params.Unit != "C" && params.Unit != "F" {
-						result = fmt.Sprintf("Invalid temperature unit '%s'. Must be 'C' or 'F'", params.Unit)
-					} else {
-						result = getWeather(params.Location, params.Unit)
-					}
+					fmt.Printf("Error parsing arguments: %v\n", err)
+					continue
 				}
-			} else {
-				result = fmt.Sprintf("Unknown function: %s", toolCall.Function.Name)
+
+				result := getWeather(params.Location, params.Unit)
+				fmt.Printf("Function result: %s\n", result)
 			}
-
-			fmt.Printf("  Result: %s\n", result)
-			toolCallResults = append(toolCallResults, struct{ID string; Result string}{
-				ID: toolCall.ID,
-				Result: result,
-			})
-			toolMessages = append(toolMessages, openai.ToolMessage(toolCall.ID, result))
-		}
-
-		fmt.Println("\nGetting final response...")
-		startTime = time.Now()
-		finalResp, err := client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
-			Model:    openai.F(openai.ChatModelGPT4oMini),
-			Messages: openai.F(toolMessages),
-		})
-		if err != nil {
-			fmt.Printf("Error in follow-up call: %v\n", err)
-			return
-		}
-		duration = time.Since(startTime)
-
-		fmt.Printf("\nFinal Assistant Response: %s\n", finalResp.Choices[0].Message.Content)
-
-		// Build the follow-up conversation context
-		var followUpMessages []dto.Message
-		// User message
-		followUpMessages = append(followUpMessages, dto.Message{
-			Index:   0,
-			Content: userPrompt,
-			Role:    "user",
-		})
-		// Assistant message with tool calls
-		followUpMessages = append(followUpMessages, dto.Message{
-			Index:     1,
-			Content:   resp.Choices[0].Message.Content,
-			Role:      "assistant",
-			ToolCalls: convertOpenAIToolCallsToDTO(resp.Choices[0].Message.ToolCalls),
-		})
-		// Tool result messages
-		for i, toolResult := range toolCallResults {
-			followUpMessages = append(followUpMessages, dto.Message{
-				Index:   i + 2,
-				Content: toolResult.Result,
-				Role:    "tool",
-			})
-		}
-		
-		// Log the second API call (follow-up with tool results)
-		secondLog := dto.PromptLogAttributes{
-			Prompt: dto.Prompt{
-				Vendor:   "openai",
-				Mode:     "chat",
-				Model:    string(openai.ChatModelGPT4oMini),
-				Messages: followUpMessages,
-			},
-			Completion: dto.Completion{
-				Model: finalResp.Model,
-				Messages: []dto.Message{
-					{
-						Index:   0,
-						Content: finalResp.Choices[0].Message.Content,
-						Role:    "assistant",
-					},
-				},
-			},
-			Usage: dto.Usage{
-				TotalTokens:      int(finalResp.Usage.TotalTokens),
-				CompletionTokens: int(finalResp.Usage.CompletionTokens),
-				PromptTokens:     int(finalResp.Usage.PromptTokens),
-			},
-			Duration: int(duration.Milliseconds()),
-		}
-
-		if err := traceloop.LogPrompt(ctx, secondLog); err != nil {
-			fmt.Printf("Error logging second API call: %v\n", err)
-		}
-	} else {
-		// No tool calls - log simple interaction
-		simpleLog := dto.PromptLogAttributes{
-			Prompt: dto.Prompt{
-				Vendor:      "openai",
-				Mode:        "chat",
-				Model:       string(openai.ChatModelGPT4oMini),
-				Temperature: 0.7,
-				Messages: []dto.Message{
-					{
-						Index:   0,
-						Content: userPrompt,
-						Role:    "user",
-					},
-				},
-			},
-			Completion: dto.Completion{
-				Model: resp.Model,
-				Messages: []dto.Message{
-					{
-						Index:   0,
-						Content: resp.Choices[0].Message.Content,
-						Role:    "assistant",
-					},
-				},
-			},
-			Usage: dto.Usage{
-				TotalTokens:      int(resp.Usage.TotalTokens),
-				CompletionTokens: int(resp.Usage.CompletionTokens),
-				PromptTokens:     int(resp.Usage.PromptTokens),
-			},
-			Duration: int(duration.Milliseconds()),
-		}
-
-		if err := traceloop.LogPrompt(ctx, simpleLog); err != nil {
-			fmt.Printf("Error logging simple interaction: %v\n", err)
 		}
 	}
 
-	fmt.Println("\nDone! Check your Traceloop dashboard to see the traced interactions with tool calling.")
+	fmt.Printf("\nRequest completed in %v\n", duration)
 }

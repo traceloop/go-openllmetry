@@ -7,8 +7,6 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
-
-	"github.com/traceloop/go-openllmetry/traceloop-sdk/dto"
 )
 
 func TestLogPromptSpanAttributes(t *testing.T) {
@@ -31,62 +29,83 @@ func TestLogPromptSpanAttributes(t *testing.T) {
 		tracerProvider: tp,
 	}
 
-	// Test data - first span (tool calling)
-	toolCallAttrs := dto.PromptLogAttributes{
-		Prompt: dto.Prompt{
-			Vendor:      "openai",
-			Mode:        "chat",
-			Model:       "gpt-4o-mini",
-			Temperature: 0.7,
-			Tools: []dto.Tool{
-				{
-					Type: "function",
-					Function: dto.ToolFunction{
-						Name:        "get_weather",
-						Description: "Get the current weather for a given location",
+	// Create prompt with tool calling using new API
+	prompt := Prompt{
+		Vendor:  "openai",
+		Mode:    "chat",
+		Model:   "gpt-4o-mini",
+		Messages: []Message{
+			{
+				Index:   0,
+				Role:    "user",
+				Content: "What's the weather like in San Francisco?",
+			},
+		},
+		Tools: []Tool{
+			{
+				Type: "function",
+				Function: ToolFunction{
+					Name:        "get_weather",
+					Description: "Get the current weather for a given location",
+					Parameters: map[string]interface{}{
+						"type": "object",
+						"properties": map[string]interface{}{
+							"location": map[string]interface{}{
+								"type":        "string",
+								"description": "The city and state, e.g. San Francisco, CA",
+							},
+						},
+						"required": []string{"location"},
 					},
 				},
 			},
-			Messages: []dto.Message{
-				{
-					Index:   0,
-					Content: "What's the weather like in San Francisco?",
-					Role:    "user",
-				},
-			},
 		},
-		Completion: dto.Completion{
-			Model: "gpt-4o-mini-2024-07-18",
-			Messages: []dto.Message{
-				{
-					Index:   0,
-					Content: "", // Empty content for tool calling
-					Role:    "assistant",
-					ToolCalls: []dto.ToolCall{
-						{
-							ID:   "call_YkIfypBQrmpUpxsKuS9aNdKg",
-							Type: "function",
-							Function: dto.ToolCallFunction{
-								Name:      "get_weather",
-								Arguments: `{"location":"San Francisco, CA"}`,
-							},
+	}
+
+	workflowAttrs := WorkflowAttributes{
+		Name: "test-workflow",
+		AssociationProperties: map[string]string{
+			"entity_name": "test-entity",
+		},
+	}
+
+	// Log the prompt using new workflow API
+	llmSpan, err := tl.LogPrompt(context.Background(), prompt, workflowAttrs)
+	if err != nil {
+		t.Fatalf("LogPrompt failed: %v", err)
+	}
+
+	// Log completion with tool calls
+	completion := Completion{
+		Model: "gpt-4o-mini-2024-07-18",
+		Messages: []Message{
+			{
+				Index:   0,
+				Role:    "assistant",
+				Content: "",
+				ToolCalls: []ToolCall{
+					{
+						ID:   "call_YkIfypBQrmpUpxsKuS9aNdKg",
+						Type: "function",
+						Function: ToolCallFunction{
+							Name:      "get_weather",
+							Arguments: "{\"location\":\"San Francisco, CA\"}",
 						},
 					},
 				},
 			},
 		},
-		Usage: dto.Usage{
-			TotalTokens:      99,
-			CompletionTokens: 17,
-			PromptTokens:     82,
-		},
-		Duration: 1500,
 	}
 
-	// Log the prompt using legacy API
-	err := tl.LogPromptLegacy(context.Background(), toolCallAttrs)
+	usage := Usage{
+		TotalTokens:      99,
+		CompletionTokens: 17,
+		PromptTokens:     82,
+	}
+
+	err = llmSpan.LogCompletion(context.Background(), completion, usage)
 	if err != nil {
-		t.Fatalf("LogPrompt failed: %v", err)
+		t.Fatalf("LogCompletion failed: %v", err)
 	}
 
 	// Get the recorded spans
@@ -117,13 +136,18 @@ func TestLogPromptSpanAttributes(t *testing.T) {
 		"llm.usage.total_tokens":       int64(99),
 		"llm.usage.completion_tokens":  int64(17),
 		"llm.usage.prompt_tokens":      int64(82),
+		"traceloop.workflow.name":      "test-workflow",
+		"traceloop.association.properties.entity_name": "test-entity",
 		"llm.prompts.0.content":        "What's the weather like in San Francisco?",
 		"llm.prompts.0.role":           "user",
 		"llm.completions.0.content":    "",
 		"llm.completions.0.role":       "assistant",
 		"llm.completions.0.tool_calls.0.id": "call_YkIfypBQrmpUpxsKuS9aNdKg",
+		"llm.completions.0.tool_calls.0.type": "function",
 		"llm.completions.0.tool_calls.0.name": "get_weather",
-		"llm.completions.0.tool_calls.0.arguments": `{"location":"San Francisco, CA"}`,
+		"llm.completions.0.tool_calls.0.arguments": "{\"location\":\"San Francisco, CA\"}",
+		"llm.request.functions.0.name": "get_weather",
+		"llm.request.functions.0.description": "Get the current weather for a given location",
 	}
 
 	for expectedKey, expectedValue := range expectedAttrs {

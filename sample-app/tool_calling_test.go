@@ -12,7 +12,6 @@ import (
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
 	sdk "github.com/traceloop/go-openllmetry/traceloop-sdk"
-	"github.com/traceloop/go-openllmetry/traceloop-sdk/config"
 )
 
 func TestToolCallingWithMock(t *testing.T) {
@@ -46,13 +45,14 @@ func TestToolCallingWithMock(t *testing.T) {
 	ctx := context.Background()
 
 	// Initialize traceloop (will work without real API key in replay mode)
-	traceloop := sdk.NewClient(config.Config{
+	traceloop, err := sdk.NewClient(context.Background(), sdk.Config{
 		BaseURL: "https://api.traceloop.com",
 		APIKey:  "test-key-for-mocking",
 	})
+	if err != nil {
+		t.Fatalf("NewClient error: %v", err)
+	}
 	defer func() { traceloop.Shutdown(ctx) }()
-
-	traceloop.Initialize(ctx)
 
 	// Create OpenAI client with custom HTTP transport
 	// In recording mode, use real API key. In replay mode, any key works.
