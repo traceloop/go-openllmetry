@@ -10,7 +10,6 @@ require (
 	github.com/traceloop/go-openllmetry/semconv-ai v0.0.0-20250405130248-6b2b4b41102b
 	go.opentelemetry.io/otel v1.37.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.22.0
-	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.37.0
 	go.opentelemetry.io/otel/trace v1.37.0
 )
 
