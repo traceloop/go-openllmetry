@@ -15,10 +15,26 @@ import (
 )
 
 func newTraceloopExporter(ctx context.Context, config Config) (*otlp.Exporter, error) {
+	// WithEndpoint expects host:port format, no protocol or path
+	endpoint := config.BaseURL
+	// Remove protocol if present since WithEndpoint doesn't accept it
+	if strings.HasPrefix(endpoint, "https://") {
+		endpoint = strings.TrimPrefix(endpoint, "https://")
+	}
+	if strings.HasPrefix(endpoint, "http://") {
+		endpoint = strings.TrimPrefix(endpoint, "http://")
+	}
+	
+	// Add default HTTPS port if no port specified
+	if !strings.Contains(endpoint, ":") {
+		endpoint = endpoint + ":443"
+	}
+	
 	return otlp.New(
 		ctx,
 		otlphttp.NewClient(
-			otlphttp.WithEndpoint(config.BaseURL),
+			otlphttp.WithEndpoint(endpoint),
+			otlphttp.WithURLPath("/v1/traces"),
 			otlphttp.WithHeaders(
 				map[string]string{
 					"Authorization": fmt.Sprintf("Bearer %s", config.APIKey),

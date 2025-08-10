@@ -3,52 +3,77 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"time"
 
+	"github.com/joho/godotenv"
 	"github.com/sashabaranov/go-openai"
-	tlp "github.com/traceloop/go-openllmetry/traceloop-sdk"
+	sdk "github.com/traceloop/go-openllmetry/traceloop-sdk"
 )
 
-func workflow_example() {
+func main() {
+	// Load environment variables from .env file
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found, using environment variables")
+	}
+
+	if len(os.Args) > 1 && os.Args[1] == "tool-calling" {
+		runToolCallingExample()
+		return
+	}
+	
+	// Default to workflow example using prompt registry
+	workflowExample()
+}
+
+func workflowExample() {
 	ctx := context.Background()
 
-	traceloop, err := tlp.NewClient(ctx, tlp.Config{
-		BaseURL: "api-staging.traceloop.com",
-		APIKey:  os.Getenv("TRACELOOP_API_KEY"),
+	traceloop, err := sdk.NewClient(ctx, sdk.Config{
+		APIKey: os.Getenv("TRACELOOP_API_KEY"),
 	})
-	defer func() { traceloop.Shutdown(ctx) }()
-
 	if err != nil {
 		fmt.Printf("NewClient error: %v\n", err)
 		return
 	}
+	defer func() { traceloop.Shutdown(ctx) }()
 
-	request, err := traceloop.GetOpenAIChatCompletionRequest("example-prompt", map[string]interface{}{"date": time.Now().Format("01/02")})
+	// Get prompt from registry
+	request, err := traceloop.GetOpenAIChatCompletionRequest("question_answering", map[string]interface{}{
+		"date":        time.Now().Format("01/02"),
+		"question":    "What's the weather like today?",
+		"information": "The current weather is sunny and 75 degrees.",
+	})
 	if err != nil {
 		fmt.Printf("GetOpenAIChatCompletionRequest error: %v\n", err)
 		return
 	}
 
-	var promptMsgs []tlp.Message
+	// Convert to our format for logging
+	var promptMsgs []sdk.Message
 	for i, message := range request.Messages {
-		promptMsgs = append(promptMsgs, tlp.Message{
+		promptMsgs = append(promptMsgs, sdk.Message{
 			Index:   i,
 			Content: message.Content,
 			Role:    message.Role,
 		})
 	}
 
+	// Log the prompt
 	llmSpan, err := traceloop.LogPrompt(
 		ctx,
-		tlp.Prompt{
+		sdk.Prompt{
 			Vendor:   "openai",
 			Mode:     "chat",
 			Model:    request.Model,
 			Messages: promptMsgs,
 		},
-		tlp.WorkflowAttributes{
+		sdk.WorkflowAttributes{
 			Name: "example-workflow",
+			AssociationProperties: map[string]string{
+				"user_id": "demo-user",
+			},
 		},
 	)
 	if err != nil {
@@ -56,6 +81,7 @@ func workflow_example() {
 		return
 	}
 
+	// Make actual OpenAI API call
 	client := openai.NewClient(os.Getenv("OPENAI_API_KEY"))
 	resp, err := client.CreateChatCompletion(
 		context.Background(),
@@ -66,23 +92,29 @@ func workflow_example() {
 		return
 	}
 
-	var completionMsgs []tlp.Message
+	// Convert response to our format for logging
+	var completionMsgs []sdk.Message
 	for _, choice := range resp.Choices {
-		completionMsgs = append(completionMsgs, tlp.Message{
+		completionMsgs = append(completionMsgs, sdk.Message{
 			Index:   choice.Index,
 			Content: choice.Message.Content,
 			Role:    choice.Message.Role,
 		})
 	}
 
-	llmSpan.LogCompletion(ctx, tlp.Completion{
+	// Log the completion
+	err = llmSpan.LogCompletion(ctx, sdk.Completion{
 		Model:    resp.Model,
 		Messages: completionMsgs,
-	}, tlp.Usage{
+	}, sdk.Usage{
 		TotalTokens:      resp.Usage.TotalTokens,
 		CompletionTokens: resp.Usage.CompletionTokens,
 		PromptTokens:     resp.Usage.PromptTokens,
 	})
+	if err != nil {
+		fmt.Printf("LogCompletion error: %v\n", err)
+		return
+	}
 
 	fmt.Println(resp.Choices[0].Message.Content)
 }

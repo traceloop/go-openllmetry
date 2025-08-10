@@ -2,6 +2,7 @@ package traceloop
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -83,8 +84,54 @@ func setMessagesAttribute(span apitrace.Span, prefix string, messages []Message)
 			attribute.String(attrsPrefix+".content", message.Content),
 			attribute.String(attrsPrefix+".role", message.Role),
 		)
+
+		if len(message.ToolCalls) > 0 {
+			setToolCallsAttribute(span, attrsPrefix, message.ToolCalls)
+		}
 	}
 }
+
+
+// Tool calling attribute helpers for new types
+func setToolCallsAttribute(span apitrace.Span, messagePrefix string, toolCalls []ToolCall) {
+	for i, toolCall := range toolCalls {
+		toolCallPrefix := fmt.Sprintf("%s.tool_calls.%d", messagePrefix, i)
+		span.SetAttributes(
+			attribute.String(toolCallPrefix+".id", toolCall.ID),
+			attribute.String(toolCallPrefix+".type", toolCall.Type),
+			attribute.String(toolCallPrefix+".name", toolCall.Function.Name),
+			attribute.String(toolCallPrefix+".arguments", toolCall.Function.Arguments),
+		)
+	}
+}
+
+
+
+func setToolsAttribute(span apitrace.Span, tools []Tool) {
+	if len(tools) == 0 {
+		return
+	}
+
+	for i, tool := range tools {
+		prefix := fmt.Sprintf("%s.%d", string(semconvai.LLMRequestFunctions), i)
+		span.SetAttributes(
+			attribute.String(prefix+".name", tool.Function.Name),
+			attribute.String(prefix+".description", tool.Function.Description),
+		)
+
+		if tool.Function.Parameters != nil {
+			parametersJSON, err := json.Marshal(tool.Function.Parameters)
+			if err == nil {
+				span.SetAttributes(
+					attribute.String(prefix+".parameters", string(parametersJSON)),
+				)
+			} else {
+				fmt.Printf("Failed to marshal tool parameters for %s: %v\n", tool.Function.Name, err)
+			}
+		}
+	}
+}
+
 
 func (instance *Traceloop) tracerName() string {
 	if instance.config.TracerName != "" {
@@ -98,18 +145,26 @@ func (instance *Traceloop) getTracer() apitrace.Tracer {
 	return (*instance.tracerProvider).Tracer(instance.tracerName())
 }
 
+// New workflow-based API
 func (instance *Traceloop) LogPrompt(ctx context.Context, prompt Prompt, workflowAttrs WorkflowAttributes) (LLMSpan, error) {
 	spanName := fmt.Sprintf("%s.%s", prompt.Vendor, prompt.Mode)
 	_, span := instance.getTracer().Start(ctx, spanName)
 
-	span.SetAttributes(
+	attrs := []attribute.KeyValue{
 		semconvai.LLMVendor.String(prompt.Vendor),
 		semconvai.LLMRequestModel.String(prompt.Model),
 		semconvai.LLMRequestType.String(prompt.Mode),
 		semconvai.TraceloopWorkflowName.String(workflowAttrs.Name),
-	)
+	}
 
+	// Add association properties if provided
+	for key, value := range workflowAttrs.AssociationProperties {
+		attrs = append(attrs, attribute.String("traceloop.association.properties."+key, value))
+	}
+
+	span.SetAttributes(attrs...)
 	setMessagesAttribute(span, "llm.prompts", prompt.Messages)
+	setToolsAttribute(span, prompt.Tools)
 
 	return LLMSpan{
 		span: span,
@@ -127,9 +182,9 @@ func (llmSpan *LLMSpan) LogCompletion(ctx context.Context, completion Completion
 	setMessagesAttribute(llmSpan.span, "llm.completions", completion.Messages)
 
 	defer llmSpan.span.End()
-
 	return nil
 }
+
 
 func (instance *Traceloop) Shutdown(ctx context.Context) {
 	if instance.tracerProvider != nil {
