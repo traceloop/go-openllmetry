@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -68,7 +69,9 @@ func (instance *Traceloop) initialize(ctx context.Context) error {
 
 	log.Printf("Traceloop %s SDK initialized. Connecting to %s\n", Version(), instance.config.BaseURL)
 
-	instance.pollPrompts()
+	if strings.HasSuffix(strings.ToLower(instance.config.BaseURL), "traceloop.com") {
+		instance.pollPrompts()
+	}
 	err := instance.initTracer(ctx, instance.config.ServiceName)
 	if err != nil {
 		return err
@@ -91,7 +94,6 @@ func setMessagesAttribute(span apitrace.Span, prefix string, messages []Message)
 	}
 }
 
-
 // Tool calling attribute helpers for new types
 func setToolCallsAttribute(span apitrace.Span, messagePrefix string, toolCalls []ToolCall) {
 	for i, toolCall := range toolCalls {
@@ -104,8 +106,6 @@ func setToolCallsAttribute(span apitrace.Span, messagePrefix string, toolCalls [
 		)
 	}
 }
-
-
 
 func setToolsAttribute(span apitrace.Span, tools []Tool) {
 	if len(tools) == 0 {
@@ -131,7 +131,6 @@ func setToolsAttribute(span apitrace.Span, tools []Tool) {
 		}
 	}
 }
-
 
 func (instance *Traceloop) tracerName() string {
 	if instance.config.TracerName != "" {
@@ -184,7 +183,6 @@ func (llmSpan *LLMSpan) LogCompletion(ctx context.Context, completion Completion
 	defer llmSpan.span.End()
 	return nil
 }
-
 
 func (instance *Traceloop) Shutdown(ctx context.Context) {
 	if instance.tracerProvider != nil {
