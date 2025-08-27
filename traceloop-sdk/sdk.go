@@ -69,7 +69,7 @@ func (instance *Traceloop) initialize(ctx context.Context) error {
 
 	log.Printf("Traceloop %s SDK initialized. Connecting to %s\n", Version(), instance.config.BaseURL)
 
-	if strings.HasSuffix(instance.config.BaseURL, "traceloop.com") {
+	if strings.HasSuffix(strings.ToLower(instance.config.BaseURL), "traceloop.com") {
 		instance.pollPrompts()
 	}
 	err := instance.initTracer(ctx, instance.config.ServiceName)
