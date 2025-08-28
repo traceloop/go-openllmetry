@@ -15,31 +15,20 @@ import (
 )
 
 func newTraceloopExporter(ctx context.Context, config Config) (*otlp.Exporter, error) {
-	// WithEndpoint expects host:port format, no protocol or path
-	endpoint := config.BaseURL
-	// Remove protocol if present since WithEndpoint doesn't accept it
-	if strings.HasPrefix(endpoint, "https://") {
-		endpoint = strings.TrimPrefix(endpoint, "https://")
+	headers := make(map[string]string)
+	for k, v := range config.Headers {
+		headers[k] = v
 	}
-	if strings.HasPrefix(endpoint, "http://") {
-		endpoint = strings.TrimPrefix(endpoint, "http://")
+
+	if config.APIKey != "" {
+		headers["Authorization"] = fmt.Sprintf("Bearer %s", config.APIKey)
 	}
-	
-	// Add default HTTPS port if no port specified
-	if !strings.Contains(endpoint, ":") {
-		endpoint = endpoint + ":443"
-	}
-	
+
 	return otlp.New(
 		ctx,
 		otlphttp.NewClient(
-			otlphttp.WithEndpoint(endpoint),
-			otlphttp.WithURLPath("/v1/traces"),
-			otlphttp.WithHeaders(
-				map[string]string{
-					"Authorization": fmt.Sprintf("Bearer %s", config.APIKey),
-				},
-			),
+			otlphttp.WithEndpointURL(config.BaseURL),
+			otlphttp.WithHeaders(headers),
 		),
 	)
 }
@@ -130,7 +119,7 @@ func newTracerProvider(ctx context.Context, serviceName string, exp trace.SpanEx
 }
 
 func (instance *Traceloop) initTracer(ctx context.Context, serviceName string) error {
-	exp, err := newOtlpExporter(ctx, instance.config)
+	exp, err := newTraceloopExporter(ctx, instance.config)
 	if err != nil {
 		return fmt.Errorf("create otlp exporter: %w", err)
 	}
