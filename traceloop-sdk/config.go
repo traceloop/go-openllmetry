@@ -9,6 +9,7 @@ type BackoffConfig struct {
 type Config struct {
 	BaseURL         string
 	APIKey          string
+	Headers         map[string]string
 	TracerName      string
 	ServiceName     string
 	PollingInterval time.Duration
