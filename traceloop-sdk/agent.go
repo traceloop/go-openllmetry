@@ -22,7 +22,7 @@ func (agent *Agent) End() {
 
 func (agent *Agent) LogPrompt(prompt Prompt) LLMSpan {
 	if agent.workflow != nil {
-		return agent.workflow.LogPrompt(prompt)
+		return agent.sdk.LogPrompt(agent.ctx, prompt, agent.workflow.Attributes)
 	}
 	return agent.sdk.LogPrompt(agent.ctx, prompt, WorkflowAttributes{})
 }

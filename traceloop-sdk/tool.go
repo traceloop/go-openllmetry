@@ -19,5 +19,5 @@ func (tool *Tool) End() {
 }
 
 func (tool *Tool) LogPrompt(prompt Prompt) LLMSpan {
-	return tool.agent.LogPrompt(prompt)
+	return tool.agent.sdk.LogPrompt(tool.ctx, prompt, tool.agent.workflow.Attributes)
 }
