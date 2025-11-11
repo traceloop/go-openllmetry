@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	semconvai "github.com/traceloop/go-openllmetry/semconv-ai"
+	"github.com/traceloop/go-openllmetry/traceloop-sdk/model"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
-	"github.com/traceloop/go-openllmetry/traceloop-sdk/model"
 )
 
 type Agent struct {
@@ -15,6 +15,7 @@ type Agent struct {
 	workflow   *Workflow
 	ctx        context.Context
 	Attributes AgentAttributes `json:"agent_attributes"`
+	ABTest     *model.ABTest   `json:"ab_test"`
 }
 
 func (agent *Agent) End() {
@@ -70,5 +71,3 @@ func (agent *Agent) NewTool(name string, toolType string, toolFunction ToolFunct
 		Function: toolFunction,
 	}
 }
-
-

@@ -7,11 +7,18 @@ import (
 
 	"github.com/sashabaranov/go-openai"
 	sdk "github.com/traceloop/go-openllmetry/traceloop-sdk"
+	"github.com/traceloop/go-openllmetry/traceloop-sdk/model"
 )
 
 var associationProperties = map[string]string{
 	"user_id": "user_67890",
-	"ab_testing_variant": "variant_a",
+}
+
+var abTest = &model.ABTest{
+	VarientsKeys: map[string]bool{
+		"variant_a": false,
+		"variant_b": true,
+	},
 }
 
 // ingredientValidatorTool validates that requested ingredients are available/safe
@@ -236,7 +243,10 @@ func runRecipeAgent() {
 	client := openai.NewClient(os.Getenv("OPENAI_API_KEY"))
 
 	// Create standalone agent with association properties
-	agent := traceloop.NewAgent(ctx, "recipe_generator", associationProperties)
+	agent := traceloop.NewAgent(ctx, "recipe_generator", sdk.AgentAttributes{
+		Name: "recipe_generator",
+		AssociationProperties: associationProperties,
+	}, abTest)
 	defer agent.End()
 
 	// User request

@@ -143,7 +143,7 @@ func (instance *Traceloop) getTracer() apitrace.Tracer {
 }
 
 // NewAgent creates a standalone agent (without a workflow)
-func (instance *Traceloop) NewAgent(ctx context.Context, name string, associationProperties map[string]string) *Agent {
+func (instance *Traceloop) NewAgent(ctx context.Context, name string, agentAttrs AgentAttributes, abTest *model.ABTest) *Agent {
 	aCtx, span := instance.getTracer().Start(ctx, fmt.Sprintf("%s.agent", name), apitrace.WithNewRoot())
 
 	attrs := []attribute.KeyValue{
@@ -152,8 +152,17 @@ func (instance *Traceloop) NewAgent(ctx context.Context, name string, associatio
 		semconvai.LLMAgentName.String(name),
 	}
 
+	if abTest != nil {
+		for key, activeVarient := range abTest.VarientsKeys {
+			if activeVarient {
+				agentAttrs.AssociationProperties["ab_testing_variant"] = key
+				break
+			}
+		}
+	}
+
 	// Add association properties if provided
-	for key, value := range associationProperties {
+	for key, value := range agentAttrs.AssociationProperties {
 		attrs = append(attrs, attribute.String("traceloop.association.properties."+key, value))
 	}
 
@@ -163,10 +172,8 @@ func (instance *Traceloop) NewAgent(ctx context.Context, name string, associatio
 		sdk:      instance,
 		workflow: nil,
 		ctx:      aCtx,
-		Attributes: AgentAttributes{
-			Name:                  name,
-			AssociationProperties: associationProperties,
-		},
+		Attributes: agentAttrs,
+		ABTest: abTest,
 	}
 }
 

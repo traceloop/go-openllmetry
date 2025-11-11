@@ -264,7 +264,7 @@ func runJokeWorkflow() {
 			"user_id": "user_12345",
 			"chat_id": "chat_1234",
 		},
-	})
+	}, nil)
 	defer wf.End()
 
 	// Execute workflow steps

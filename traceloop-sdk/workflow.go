@@ -14,9 +14,10 @@ type Workflow struct {
 	sdk        *Traceloop
 	ctx        context.Context
 	Attributes WorkflowAttributes `json:"workflow_attributes"`
+	ABTest 	   *model.ABTest `json:"ab_test"`
 }
 
-func (instance *Traceloop) NewWorkflow(ctx context.Context, attrs WorkflowAttributes) *Workflow {
+func (instance *Traceloop) NewWorkflow(ctx context.Context, attrs WorkflowAttributes, abTest *model.ABTest) *Workflow {
 	wCtx, span := instance.getTracer().Start(ctx, fmt.Sprintf("%s.workflow", attrs.Name), trace.WithNewRoot())
 
 	span.SetAttributes(
@@ -24,6 +25,15 @@ func (instance *Traceloop) NewWorkflow(ctx context.Context, attrs WorkflowAttrib
 		semconvai.TraceloopSpanKind.String(string(model.SpanKindWorkflow)),
 		semconvai.TraceloopEntityName.String(attrs.Name),
 	)
+
+	if abTest != nil {
+		for key, activeVarient := range abTest.VarientsKeys {
+			if activeVarient {
+				span.SetAttributes(attribute.String("traceloop.association.properties.ab_testing_variant", key))
+				break
+			}
+		}	
+	}
 
 	return &Workflow{
 		sdk:        instance,
@@ -69,6 +79,13 @@ func (workflow *Workflow) NewAgent(name string, associationProperties map[string
 		semconvai.TraceloopEntityName.String(name),
 	}
 
+	if workflow.ABTest != nil {
+		for key, activeVarient := range workflow.ABTest.VarientsKeys {
+			if activeVarient {
+				associationProperties["ab_testing_variant"] = key
+			}
+		}
+	}
 	// Add agent-specific association properties to the span
 	for key, value := range associationProperties {
 		attrs = append(attrs, attribute.String("traceloop.association.properties."+key, value))
