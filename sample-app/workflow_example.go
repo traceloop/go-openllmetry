@@ -47,7 +47,7 @@ func workflowMain() {
 		})
 	}
 
-	llmSpan, err := factGenTask.LogPrompt(
+	llmSpan := factGenTask.LogPrompt(
 		tlp.Prompt{
 			Vendor:   "openai",
 			Mode:     "chat",
@@ -55,10 +55,6 @@ func workflowMain() {
 			Messages: promptMsgs,
 		},
 	)
-	if err != nil {
-		fmt.Printf("LogPrompt error: %v\n", err)
-		return
-	}
 
 	client := openai.NewClient(os.Getenv("OPENAI_API_KEY"))
 	resp, err := client.CreateChatCompletion(
@@ -91,7 +87,7 @@ func workflowMain() {
 	someOtherTask := wf.NewTask("some_other_task")
 	defer someOtherTask.End()
 
-	otherPrompt, _ := someOtherTask.LogPrompt(tlp.Prompt{
+	otherPrompt := someOtherTask.LogPrompt(tlp.Prompt{
 		Vendor: "openai",
 		Mode:   "chat",
 		Model:  request.Model,

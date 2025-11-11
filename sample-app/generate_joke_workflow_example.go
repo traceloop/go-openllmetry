@@ -27,10 +27,7 @@ func createJoke(ctx context.Context, workflow *sdk.Workflow, client *openai.Clie
 		},
 	}
 
-	llmSpan, err := task.LogPrompt(prompt)
-	if err != nil {
-		return "", fmt.Errorf("LogPrompt error: %w", err)
-	}
+	llmSpan := task.LogPrompt(prompt)
 
 	// Make API call
 	resp, err := client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
@@ -84,13 +81,10 @@ func translateJokeToPirate(ctx context.Context, traceloop *sdk.Traceloop, workfl
 		},
 	}
 
-	llmSpan := workflow.LogAgent(sdk.AgentAttributes{
-		Name: "joke_translation",
-	})
+	agent := workflow.NewAgent("joke_translation")
 
-	llmSpan.LogPrompt(ctx, prompt)
+	llmSpan := agent.LogPrompt(prompt)
 	
-
 	// Make API call
 	resp, err := client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
 		Model: "gpt-3.5-turbo",
@@ -125,7 +119,7 @@ func translateJokeToPirate(ctx context.Context, traceloop *sdk.Traceloop, workfl
 	})
 
 	// Call history jokes tool
-	_, err = historyJokesTool(ctx, traceloop, workflow, client)
+	_, err = historyJokesTool(ctx, agent, client)
 	if err != nil {
 		fmt.Printf("Warning: history_jokes_tool error: %v\n", err)
 	}
@@ -133,7 +127,7 @@ func translateJokeToPirate(ctx context.Context, traceloop *sdk.Traceloop, workfl
 	return resp.Choices[0].Message.Content, nil
 }
 
-func historyJokesTool(ctx context.Context, traceloop *sdk.Traceloop, workflow *sdk.Workflow, client *openai.Client) (string, error) {
+func historyJokesTool(ctx context.Context, agent *sdk.Agent, client *openai.Client) (string, error) {
 	// Log prompt
 	prompt := sdk.Prompt{
 		Vendor: "openai",
@@ -148,12 +142,13 @@ func historyJokesTool(ctx context.Context, traceloop *sdk.Traceloop, workflow *s
 		},
 	}
 	
-	llmSpan := workflow.LogToolCall(sdk.ToolCallAttributes{
-		Name: "history_jokes",
+	tool := agent.NewTool("history_jokes", "function", sdk.ToolFunction{
+		Name:        "history_jokes",
+		Description: "Get some history jokes",
+		Parameters:  map[string]interface{}{},
 	})
 
-	llmSpan.LogPrompt(ctx, prompt)
-
+	llmSpan := tool.LogPrompt(prompt)
 
 	// Make API call
 	resp, err := client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
@@ -211,10 +206,7 @@ func generateSignature(ctx context.Context, workflow *sdk.Workflow, client *open
 		},
 	}
 
-	llmSpan, err := task.LogPrompt(prompt)
-	if err != nil {
-		return "", fmt.Errorf("LogPrompt error: %w", err)
-	}
+	llmSpan := task.LogPrompt(prompt)
 
 	// Make API call
 	resp, err := client.CreateCompletion(ctx, openai.CompletionRequest{

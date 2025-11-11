@@ -16,7 +16,7 @@ func (task *Task) End() {
 	trace.SpanFromContext(task.ctx).End()
 }
 
-func (task *Task) LogPrompt(prompt Prompt) (LLMSpan, error) {
+func (task *Task) LogPrompt(prompt Prompt) LLMSpan {
 	return task.workflow.sdk.LogPrompt(task.ctx, prompt, task.workflow.Attributes)
 }
 

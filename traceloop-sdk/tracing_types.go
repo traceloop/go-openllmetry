@@ -42,10 +42,6 @@ type ToolFunction struct {
 	Parameters  interface{} `json:"parameters"`
 }
 
-type Tool struct {
-	Type     string       `json:"type"`
-	Function ToolFunction `json:"function,omitempty"`
-}
 
 type ToolCall struct {
 	ID       string           `json:"id"`

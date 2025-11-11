@@ -62,7 +62,7 @@ func workflowExample() {
 	}
 
 	// Log the prompt
-	llmSpan, err := traceloop.LogPrompt(
+	llmSpan := traceloop.LogPrompt(
 		ctx,
 		sdk.Prompt{
 			Vendor:   "openai",
@@ -104,7 +104,7 @@ func workflowExample() {
 	}
 
 	// Log the completion
-	llmSpan.LogCompletion(ctx, sdk.Completion{
+	llmSpan.LogCompletion(ctx, sdk.Completion{	
 		Model:    resp.Model,
 		Messages: completionMsgs,
 	}, sdk.Usage{

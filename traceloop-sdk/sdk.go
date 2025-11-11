@@ -147,7 +147,7 @@ func (instance *Traceloop) getTracer() apitrace.Tracer {
 }
 
 // New workflow-based API
-func (instance *Traceloop) LogPrompt(ctx context.Context, prompt Prompt, workflowAttrs WorkflowAttributes) (LLMSpan, error) {
+func (instance *Traceloop) LogPrompt(ctx context.Context, prompt Prompt, workflowAttrs WorkflowAttributes) LLMSpan {
 	spanName := fmt.Sprintf("%s.%s", prompt.Vendor, prompt.Mode)
 	_, span := instance.getTracer().Start(ctx, spanName)
 
@@ -169,7 +169,7 @@ func (instance *Traceloop) LogPrompt(ctx context.Context, prompt Prompt, workflo
 
 	return LLMSpan{
 		span: span,
-	}, nil
+	}
 }
 
 // LogToolCall logs a tool call with the specified name

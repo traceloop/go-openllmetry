@@ -35,7 +35,7 @@ func (workflow *Workflow) End() {
 	trace.SpanFromContext(workflow.ctx).End()
 }
 
-func (workflow *Workflow) LogPrompt(prompt Prompt) (LLMSpan, error) {
+func (workflow *Workflow) LogPrompt(prompt Prompt) LLMSpan {
 	return workflow.sdk.LogPrompt(workflow.ctx, prompt, workflow.Attributes)
 }
 
@@ -55,10 +55,19 @@ func (workflow *Workflow) NewTask(name string) *Task {
 	}
 }
 
-func (workflow *Workflow) LogAgent(attrs AgentAttributes) LLMSpan {
-	return workflow.sdk.LogAgent(workflow.ctx, attrs, workflow.Attributes)
+func (workflow *Workflow) NewAgent(name string) *Agent {
+	aCtx, span := workflow.sdk.getTracer().Start(workflow.ctx, fmt.Sprintf("%s.agent", name))
+
+	span.SetAttributes(
+		semconvai.TraceloopWorkflowName.String(workflow.Attributes.Name),
+		semconvai.TraceloopSpanKind.String(string(model.SpanKindAgent)),
+		semconvai.TraceloopEntityName.String(name),
+	)
+
+	return &Agent{
+		workflow:   workflow,
+		ctx:        aCtx,
+		Name:       name,
+	}
 }
 
-func (workflow *Workflow) LogToolCall(attrs ToolCallAttributes) LLMSpan {
-	return workflow.sdk.LogToolCall(workflow.ctx, attrs, workflow.Attributes)
-}
