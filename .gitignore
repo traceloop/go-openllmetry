@@ -8,7 +8,6 @@
 *.so
 *.tar.gz
 /release/
-sample-app
 
 # Test binary, built with `go test -c`
 *.test
