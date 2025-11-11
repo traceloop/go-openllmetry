@@ -70,7 +70,10 @@ func TestLogPromptSpanAttributes(t *testing.T) {
 	}
 
 	// Log the prompt using new workflow API
-	llmSpan := tl.LogPrompt(context.Background(), prompt, workflowAttrs)
+	llmSpan := tl.LogPrompt(context.Background(), prompt, ContextAttributes{
+		WorkflowName: &workflowAttrs.Name,
+		AssociationProperties: workflowAttrs.AssociationProperties,
+	})
 
 	// Log completion with tool calls
 	completion := Completion{

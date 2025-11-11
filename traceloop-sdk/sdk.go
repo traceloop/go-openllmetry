@@ -163,12 +163,15 @@ func (instance *Traceloop) NewAgent(ctx context.Context, name string, associatio
 		sdk:      instance,
 		workflow: nil,
 		ctx:      aCtx,
-		Name:     name,
+		Attributes: AgentAttributes{
+			Name:                  name,
+			AssociationProperties: associationProperties,
+		},
 	}
 }
 
 // New workflow-based API
-func (instance *Traceloop) LogPrompt(ctx context.Context, prompt Prompt, workflowAttrs *WorkflowAttributes) LLMSpan {
+func (instance *Traceloop) LogPrompt(ctx context.Context, prompt Prompt, contextAttrs ContextAttributes) LLMSpan {
 	spanName := fmt.Sprintf("%s.%s", prompt.Vendor, prompt.Mode)
 	_, span := instance.getTracer().Start(ctx, spanName)
 
@@ -178,14 +181,19 @@ func (instance *Traceloop) LogPrompt(ctx context.Context, prompt Prompt, workflo
 		semconvai.LLMRequestType.String(prompt.Mode),
 	}
 
-	if workflowAttrs != nil {
-		attrs = append(attrs, semconvai.TraceloopWorkflowName.String(workflowAttrs.Name))
-
-		// Add association properties if provided
-		for key, value := range workflowAttrs.AssociationProperties {
-			attrs = append(attrs, attribute.String("traceloop.association.properties."+key, value))
-		}
+	if contextAttrs.WorkflowName != nil {
+		attrs = append(attrs, semconvai.TraceloopWorkflowName.String(*contextAttrs.WorkflowName))
 	}
+
+	if contextAttrs.AgentName != nil {
+		attrs = append(attrs, semconvai.LLMAgentName.String(*contextAttrs.AgentName))
+	}
+
+	// Add association properties
+	for key, value := range contextAttrs.AssociationProperties {
+		attrs = append(attrs, attribute.String("traceloop.association.properties."+key, value))
+	}
+	
 
 	span.SetAttributes(attrs...)
 	setMessagesAttribute(span, "llm.prompts", prompt.Messages)

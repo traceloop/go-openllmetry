@@ -81,7 +81,9 @@ func translateJokeToPirate(ctx context.Context, workflow *sdk.Workflow, client *
 		},
 	}
 
-	agent := workflow.NewAgent("joke_translation")
+	agent := workflow.NewAgent("joke_translation", map[string]string{
+		"translation_type": "pirate",
+	})
 	defer agent.End()
 
 	llmSpan := agent.LogPrompt(prompt)

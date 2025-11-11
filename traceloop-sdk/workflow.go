@@ -6,6 +6,7 @@ import (
 
 	"github.com/traceloop/go-openllmetry/traceloop-sdk/model"
 	semconvai "github.com/traceloop/go-openllmetry/semconv-ai"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -36,7 +37,11 @@ func (workflow *Workflow) End() {
 }
 
 func (workflow *Workflow) LogPrompt(prompt Prompt) LLMSpan {
-	return workflow.sdk.LogPrompt(workflow.ctx, prompt, &workflow.Attributes)
+	contextAttrs := ContextAttributes{
+		WorkflowName:          &workflow.Attributes.Name,
+		AssociationProperties: workflow.Attributes.AssociationProperties,
+	}
+	return workflow.sdk.LogPrompt(workflow.ctx, prompt, contextAttrs)
 }
 
 func (workflow *Workflow) NewTask(name string) *Task {
@@ -55,20 +60,30 @@ func (workflow *Workflow) NewTask(name string) *Task {
 	}
 }
 
-func (workflow *Workflow) NewAgent(name string) *Agent {
+func (workflow *Workflow) NewAgent(name string, associationProperties map[string]string) *Agent {
 	aCtx, span := workflow.sdk.getTracer().Start(workflow.ctx, fmt.Sprintf("%s.agent", name))
 
-	span.SetAttributes(
+	attrs := []attribute.KeyValue{
 		semconvai.TraceloopWorkflowName.String(workflow.Attributes.Name),
 		semconvai.TraceloopSpanKind.String(string(model.SpanKindAgent)),
 		semconvai.TraceloopEntityName.String(name),
-	)
+	}
+
+	// Add agent-specific association properties to the span
+	for key, value := range associationProperties {
+		attrs = append(attrs, attribute.String("traceloop.association.properties."+key, value))
+	}
+
+	span.SetAttributes(attrs...)
 
 	return &Agent{
-		sdk:        workflow.sdk,
-		workflow:   workflow,
-		ctx:        aCtx,
-		Name:       name,
+		sdk:      workflow.sdk,
+		workflow: workflow,
+		ctx:      aCtx,
+		Attributes: AgentAttributes{
+			Name:                  name,
+			AssociationProperties: associationProperties,
+		},
 	}
 }
 

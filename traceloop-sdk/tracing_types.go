@@ -30,6 +30,12 @@ type WorkflowAttributes struct {
 	AssociationProperties map[string]string `json:"association_properties"`
 }
 
+type ContextAttributes struct {
+	WorkflowName          *string           `json:"workflow_name,omitempty"`
+	AgentName             *string           `json:"agent_name,omitempty"`
+	AssociationProperties map[string]string `json:"association_properties,omitempty"`
+}
+
 type Usage struct {
 	TotalTokens      int `json:"total_tokens"`
 	CompletionTokens int `json:"completion_tokens"`
@@ -41,7 +47,6 @@ type ToolFunction struct {
 	Description string      `json:"description"`
 	Parameters  interface{} `json:"parameters"`
 }
-
 
 type ToolCall struct {
 	ID       string           `json:"id"`
@@ -59,5 +64,6 @@ type ToolCallAttributes struct {
 }
 
 type AgentAttributes struct {
-	Name string `json:"name"`
+	Name                  string            `json:"agent_name"`
+	AssociationProperties map[string]string `json:"association_properties"`
 }

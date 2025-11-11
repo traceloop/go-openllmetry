@@ -17,5 +17,9 @@ func (task *Task) End() {
 }
 
 func (task *Task) LogPrompt(prompt Prompt) LLMSpan {
-	return task.workflow.sdk.LogPrompt(task.ctx, prompt, &task.workflow.Attributes)
+	contextAttrs := ContextAttributes{
+		WorkflowName: &task.workflow.Attributes.Name,
+		AssociationProperties: task.workflow.Attributes.AssociationProperties,
+	}
+	return task.workflow.sdk.LogPrompt(task.ctx, prompt, contextAttrs)
 }

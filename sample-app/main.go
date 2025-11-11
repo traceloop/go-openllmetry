@@ -71,6 +71,7 @@ func workflowExample() {
 	}
 
 	// Log the prompt
+	workflowName := "example-workflow"
 	llmSpan := traceloop.LogPrompt(
 		ctx,
 		sdk.Prompt{
@@ -79,8 +80,8 @@ func workflowExample() {
 			Model:    request.Model,
 			Messages: promptMsgs,
 		},
-		&sdk.WorkflowAttributes{
-			Name: "example-workflow",
+		sdk.ContextAttributes{
+			WorkflowName: &workflowName,
 			AssociationProperties: map[string]string{
 				"user_id": "demo-user",
 			},

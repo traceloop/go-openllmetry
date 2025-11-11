@@ -7,7 +7,7 @@ import (
 )
 
 type Tool struct {
-	agent    *Agent
+	agent    Agent
 	ctx      context.Context
 	Name     string       `json:"name"`
 	Type     string       `json:"type"`
@@ -19,8 +19,23 @@ func (tool *Tool) End() {
 }
 
 func (tool *Tool) LogPrompt(prompt Prompt) LLMSpan {
-	if tool.agent.workflow != nil {
-		return tool.agent.sdk.LogPrompt(tool.ctx, prompt, &tool.agent.workflow.Attributes)
+	// Merge workflow and agent association properties
+	contextAttrs := ContextAttributes{
+		AssociationProperties: make(map[string]string),
 	}
-	return tool.agent.sdk.LogPrompt(tool.ctx, prompt, nil)
+
+	// Start with workflow properties if available
+	if tool.agent.workflow != nil {
+		contextAttrs.WorkflowName = &tool.agent.workflow.Attributes.Name
+		for key, value := range tool.agent.workflow.Attributes.AssociationProperties {
+			contextAttrs.AssociationProperties[key] = value
+		}
+	}
+
+	// Agent properties override workflow properties
+	for key, value := range tool.agent.Attributes.AssociationProperties {
+		contextAttrs.AssociationProperties[key] = value
+	}
+
+	return tool.agent.sdk.LogPrompt(tool.ctx, prompt, contextAttrs)
 }

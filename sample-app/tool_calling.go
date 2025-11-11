@@ -81,17 +81,18 @@ func runToolCallingExample() {
 		Tools: tools,
 	}
 
-	workflowAttrs := sdk.WorkflowAttributes{
-		Name: "tool-calling-example",
+	workflowName := "tool-calling-example"
+	contextAttrs := sdk.ContextAttributes{
+		WorkflowName: &workflowName,
 		AssociationProperties: map[string]string{
 			"user_id": "demo-user",
 		},
 	}
 
 	fmt.Printf("User: %s\n", userPrompt)
-	
+
 	// Log the prompt
-	llmSpan := traceloop.LogPrompt(ctx, prompt, &workflowAttrs)
+	llmSpan := traceloop.LogPrompt(ctx, prompt, contextAttrs)
 
 	// Make API call to OpenAI
 	startTime := time.Now()
