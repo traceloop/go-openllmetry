@@ -57,3 +57,11 @@ type ToolCallFunction struct {
 	Name      string `json:"name"`
 	Arguments string `json:"arguments"`
 }
+
+type ToolCallAttributes struct {
+	Name string `json:"name"`
+}
+
+type AgentAttributes struct {
+	Name string `json:"name"`
+}

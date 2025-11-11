@@ -23,6 +23,7 @@ const (
 	LLMCompletions           = attribute.Key("llm.completions")
 	LLMChatStopSequence      = attribute.Key("llm.chat.stop_sequences")
 	LLMRequestFunctions      = attribute.Key("llm.request.functions")
+	LLMAgentName             = attribute.Key("llm.agent.name")
 
 	// Vector DB
 	VectorDBVendor    = attribute.Key("vector_db.vendor")

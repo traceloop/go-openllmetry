@@ -24,7 +24,8 @@ func main() {
 	}
 	
 	// Default to workflow example using prompt registry
-	workflowExample()
+	// workflowExample()
+	runJokeWorkflow()
 }
 
 func workflowExample() {
