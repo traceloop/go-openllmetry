@@ -103,10 +103,8 @@ func TestLogPromptSpanAttributes(t *testing.T) {
 		PromptTokens:     82,
 	}
 
-	err = llmSpan.LogCompletion(context.Background(), completion, usage)
-	if err != nil {
-		t.Fatalf("LogCompletion failed: %v", err)
-	}
+	llmSpan.LogCompletion(context.Background(), completion, usage)
+	
 
 	// Get the recorded spans
 	spans := exporter.GetSpans()

@@ -55,10 +55,10 @@ func (workflow *Workflow) NewTask(name string) *Task {
 	}
 }
 
-func (workflow *Workflow) LogAgent(attrs AgentAttributes) (LLMSpan, error) {
+func (workflow *Workflow) LogAgent(attrs AgentAttributes) LLMSpan {
 	return workflow.sdk.LogAgent(workflow.ctx, attrs, workflow.Attributes)
 }
 
-func (workflow *Workflow) LogToolCall(attrs ToolCallAttributes) (LLMSpan, error) {
+func (workflow *Workflow) LogToolCall(attrs ToolCallAttributes) LLMSpan {
 	return workflow.sdk.LogToolCall(workflow.ctx, attrs, workflow.Attributes)
 }

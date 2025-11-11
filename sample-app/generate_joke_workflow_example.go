@@ -84,17 +84,12 @@ func translateJokeToPirate(ctx context.Context, traceloop *sdk.Traceloop, workfl
 		},
 	}
 
-	llmSpan, err := workflow.LogAgent(sdk.AgentAttributes{
+	llmSpan := workflow.LogAgent(sdk.AgentAttributes{
 		Name: "joke_translation",
 	})
-	if err != nil {
-		return "", fmt.Errorf("LogPrompt error: %w", err)
-	}
 
-	llmSpan, err = workflow.LogPrompt(prompt)
-	if err != nil {
-		return "", fmt.Errorf("LogPrompt error: %w", err)
-	}
+	llmSpan.LogPrompt(ctx, prompt)
+	
 
 	// Make API call
 	resp, err := client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
@@ -152,18 +147,13 @@ func historyJokesTool(ctx context.Context, traceloop *sdk.Traceloop, workflow *s
 			},
 		},
 	}
-
-	llmSpan, err := workflow.LogPrompt(prompt)
-	if err != nil {
-		return "", fmt.Errorf("LogPrompt error: %w", err)
-	}
 	
-	_, err = workflow.LogToolCall(sdk.ToolCallAttributes{
+	llmSpan := workflow.LogToolCall(sdk.ToolCallAttributes{
 		Name: "history_jokes",
 	})
-	if err != nil {
-		return "", fmt.Errorf("LogToolCall error: %w", err)
-	}
+
+	llmSpan.LogPrompt(ctx, prompt)
+
 
 	// Make API call
 	resp, err := client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{

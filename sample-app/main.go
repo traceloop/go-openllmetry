@@ -104,7 +104,7 @@ func workflowExample() {
 	}
 
 	// Log the completion
-	err = llmSpan.LogCompletion(ctx, sdk.Completion{
+	llmSpan.LogCompletion(ctx, sdk.Completion{
 		Model:    resp.Model,
 		Messages: completionMsgs,
 	}, sdk.Usage{
@@ -112,10 +112,6 @@ func workflowExample() {
 		CompletionTokens: resp.Usage.CompletionTokens,
 		PromptTokens:     resp.Usage.PromptTokens,
 	})
-	if err != nil {
-		fmt.Printf("LogCompletion error: %v\n", err)
-		return
-	}
 
 	fmt.Println(resp.Choices[0].Message.Content)
 }

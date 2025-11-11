@@ -34,9 +34,6 @@ type Traceloop struct {
 	http.Client
 }
 
-type LLMSpan struct {
-	span apitrace.Span
-}
 
 func NewClient(ctx context.Context, config Config) (*Traceloop, error) {
 	instance := Traceloop{
@@ -175,22 +172,8 @@ func (instance *Traceloop) LogPrompt(ctx context.Context, prompt Prompt, workflo
 	}, nil
 }
 
-func (llmSpan *LLMSpan) LogCompletion(ctx context.Context, completion Completion, usage Usage) error {
-	llmSpan.span.SetAttributes(
-		semconvai.LLMResponseModel.String(completion.Model),
-		semconvai.LLMUsageTotalTokens.Int(usage.TotalTokens),
-		semconvai.LLMUsageCompletionTokens.Int(usage.CompletionTokens),
-		semconvai.LLMUsagePromptTokens.Int(usage.PromptTokens),
-	)
-
-	setMessagesAttribute(llmSpan.span, "llm.completions", completion.Messages)
-
-	defer llmSpan.span.End()
-	return nil
-}
-
 // LogToolCall logs a tool call with the specified name
-func (instance *Traceloop) LogToolCall(ctx context.Context, attrs ToolCallAttributes, workflowAttrs WorkflowAttributes) (LLMSpan, error) {
+func (instance *Traceloop) LogToolCall(ctx context.Context, attrs ToolCallAttributes, workflowAttrs WorkflowAttributes) LLMSpan {
 	spanName := fmt.Sprintf("%s.tool", attrs.Name)
 	_, span := instance.getTracer().Start(ctx, spanName)
 
@@ -209,11 +192,11 @@ func (instance *Traceloop) LogToolCall(ctx context.Context, attrs ToolCallAttrib
 
 	return LLMSpan{
 		span: span,
-	}, nil
+	}
 }
 
 // LogAgent logs an agent with the specified name
-func (instance *Traceloop) LogAgent(ctx context.Context, attrs AgentAttributes, workflowAttrs WorkflowAttributes) (LLMSpan, error) {
+func (instance *Traceloop) LogAgent(ctx context.Context, attrs AgentAttributes, workflowAttrs WorkflowAttributes) LLMSpan {
 	spanName := fmt.Sprintf("%s.agent", attrs.Name)
 	_, span := instance.getTracer().Start(ctx, spanName)
 
@@ -232,7 +215,7 @@ func (instance *Traceloop) LogAgent(ctx context.Context, attrs AgentAttributes, 
 
 	return LLMSpan{
 		span: span,
-	}, nil
+	}
 }
 
 func (instance *Traceloop) Shutdown(ctx context.Context) {

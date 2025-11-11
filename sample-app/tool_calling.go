@@ -175,11 +175,7 @@ func runToolCallingExample() {
 		PromptTokens:     int(resp.Usage.PromptTokens),
 	}
 
-	err = llmSpan.LogCompletion(ctx, completion, usage)
-	if err != nil {
-		fmt.Printf("Error logging completion: %v\n", err)
-		return
-	}
+	llmSpan.LogCompletion(ctx, completion, usage)
 
 	// If tool calls were made, execute them
 	if len(resp.Choices[0].Message.ToolCalls) > 0 {
