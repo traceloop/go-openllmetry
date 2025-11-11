@@ -22,9 +22,9 @@ func (agent *Agent) End() {
 
 func (agent *Agent) LogPrompt(prompt Prompt) LLMSpan {
 	if agent.workflow != nil {
-		return agent.sdk.LogPrompt(agent.ctx, prompt, agent.workflow.Attributes)
+		return agent.sdk.LogPrompt(agent.ctx, prompt, &agent.workflow.Attributes)
 	}
-	return agent.sdk.LogPrompt(agent.ctx, prompt, WorkflowAttributes{})
+	return agent.sdk.LogPrompt(agent.ctx, prompt, nil)
 }
 
 func (agent *Agent) NewTool(name string, toolType string, toolFunction ToolFunction) *Tool {

@@ -142,8 +142,33 @@ func (instance *Traceloop) getTracer() apitrace.Tracer {
 	return (*instance.tracerProvider).Tracer(instance.tracerName())
 }
 
+// NewAgent creates a standalone agent (without a workflow)
+func (instance *Traceloop) NewAgent(ctx context.Context, name string, associationProperties map[string]string) *Agent {
+	aCtx, span := instance.getTracer().Start(ctx, fmt.Sprintf("%s.agent", name), apitrace.WithNewRoot())
+
+	attrs := []attribute.KeyValue{
+		semconvai.TraceloopSpanKind.String(string(model.SpanKindAgent)),
+		semconvai.TraceloopEntityName.String(name),
+		semconvai.LLMAgentName.String(name),
+	}
+
+	// Add association properties if provided
+	for key, value := range associationProperties {
+		attrs = append(attrs, attribute.String("traceloop.association.properties."+key, value))
+	}
+
+	span.SetAttributes(attrs...)
+
+	return &Agent{
+		sdk:      instance,
+		workflow: nil,
+		ctx:      aCtx,
+		Name:     name,
+	}
+}
+
 // New workflow-based API
-func (instance *Traceloop) LogPrompt(ctx context.Context, prompt Prompt, workflowAttrs WorkflowAttributes) LLMSpan {
+func (instance *Traceloop) LogPrompt(ctx context.Context, prompt Prompt, workflowAttrs *WorkflowAttributes) LLMSpan {
 	spanName := fmt.Sprintf("%s.%s", prompt.Vendor, prompt.Mode)
 	_, span := instance.getTracer().Start(ctx, spanName)
 
@@ -151,12 +176,15 @@ func (instance *Traceloop) LogPrompt(ctx context.Context, prompt Prompt, workflo
 		semconvai.LLMVendor.String(prompt.Vendor),
 		semconvai.LLMRequestModel.String(prompt.Model),
 		semconvai.LLMRequestType.String(prompt.Mode),
-		semconvai.TraceloopWorkflowName.String(workflowAttrs.Name),
 	}
 
-	// Add association properties if provided
-	for key, value := range workflowAttrs.AssociationProperties {
-		attrs = append(attrs, attribute.String("traceloop.association.properties."+key, value))
+	if workflowAttrs != nil {
+		attrs = append(attrs, semconvai.TraceloopWorkflowName.String(workflowAttrs.Name))
+
+		// Add association properties if provided
+		for key, value := range workflowAttrs.AssociationProperties {
+			attrs = append(attrs, attribute.String("traceloop.association.properties."+key, value))
+		}
 	}
 
 	span.SetAttributes(attrs...)

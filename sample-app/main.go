@@ -22,10 +22,19 @@ func main() {
 		runToolCallingExample()
 		return
 	}
-	
+
+	if len(os.Args) > 1 && os.Args[1] == "recipe-agent" {
+		runRecipeAgent()
+		return
+	}
+
+	if len(os.Args) > 1 && os.Args[1] == "joke-workflow" {
+		runJokeWorkflow()
+		return
+	}
+
 	// Default to workflow example using prompt registry
-	// workflowExample()
-	runJokeWorkflow()
+	workflowExample()
 }
 
 func workflowExample() {
@@ -70,7 +79,7 @@ func workflowExample() {
 			Model:    request.Model,
 			Messages: promptMsgs,
 		},
-		sdk.WorkflowAttributes{
+		&sdk.WorkflowAttributes{
 			Name: "example-workflow",
 			AssociationProperties: map[string]string{
 				"user_id": "demo-user",

@@ -91,7 +91,7 @@ func runToolCallingExample() {
 	fmt.Printf("User: %s\n", userPrompt)
 	
 	// Log the prompt
-	llmSpan := traceloop.LogPrompt(ctx, prompt, workflowAttrs)
+	llmSpan := traceloop.LogPrompt(ctx, prompt, &workflowAttrs)
 
 	// Make API call to OpenAI
 	startTime := time.Now()

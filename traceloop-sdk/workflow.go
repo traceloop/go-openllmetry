@@ -36,7 +36,7 @@ func (workflow *Workflow) End() {
 }
 
 func (workflow *Workflow) LogPrompt(prompt Prompt) LLMSpan {
-	return workflow.sdk.LogPrompt(workflow.ctx, prompt, workflow.Attributes)
+	return workflow.sdk.LogPrompt(workflow.ctx, prompt, &workflow.Attributes)
 }
 
 func (workflow *Workflow) NewTask(name string) *Task {
