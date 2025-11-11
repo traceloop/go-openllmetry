@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	semconvai "github.com/traceloop/go-openllmetry/semconv-ai"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"github.com/traceloop/go-openllmetry/traceloop-sdk/model"
 )
@@ -42,13 +43,24 @@ func (agent *Agent) LogPrompt(prompt Prompt) LLMSpan {
 	return agent.sdk.LogPrompt(agent.ctx, prompt, contextAttrs)
 }
 
-func (agent *Agent) NewTool(name string, toolType string, toolFunction ToolFunction) *Tool {
+func (agent *Agent) NewTool(name string, toolType string, toolFunction ToolFunction, associationProperties map[string]string) *Tool {
 	toolCtx, span := agent.sdk.getTracer().Start(agent.ctx, fmt.Sprintf("%s.tool", name))
-	span.SetAttributes(
+	attrs := []attribute.KeyValue{
 		semconvai.LLMAgentName.String(agent.Attributes.Name),
 		semconvai.TraceloopSpanKind.String(string(model.SpanKindTool)),
 		semconvai.TraceloopEntityName.String(name),
-	)
+	}
+
+	for key, value := range agent.Attributes.AssociationProperties {
+		attrs = append(attrs, attribute.String("traceloop.association.properties."+key, value))
+	}
+
+	// Add tool-specific association properties
+	for key, value := range associationProperties {
+		attrs = append(attrs, attribute.String("traceloop.association.properties."+key, value))
+	}
+
+	span.SetAttributes(attrs...)
 
 	return &Tool{
 		agent:    *agent,

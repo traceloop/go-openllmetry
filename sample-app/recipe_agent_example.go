@@ -9,6 +9,11 @@ import (
 	sdk "github.com/traceloop/go-openllmetry/traceloop-sdk"
 )
 
+var associationProperties = map[string]string{
+	"user_id": "user_67890",
+	"ab_testing_variant": "variant_a",
+}
+
 // ingredientValidatorTool validates that requested ingredients are available/safe
 func ingredientValidatorTool(ctx context.Context, agent *sdk.Agent, client *openai.Client, ingredients string) (string, error) {
 	tool := agent.NewTool("ingredient_validator", "function", sdk.ToolFunction{
@@ -23,7 +28,7 @@ func ingredientValidatorTool(ctx context.Context, agent *sdk.Agent, client *open
 				},
 			},
 		},
-	})
+	}, associationProperties)
 	defer tool.End()
 
 	prompt := sdk.Prompt{
@@ -91,7 +96,7 @@ func nutritionCalculatorTool(ctx context.Context, agent *sdk.Agent, client *open
 				},
 			},
 		},
-	})
+	}, associationProperties)
 	defer tool.End()
 
 	prompt := sdk.Prompt{
@@ -159,6 +164,8 @@ func cookingTimeEstimatorTool(ctx context.Context, agent *sdk.Agent, client *ope
 				},
 			},
 		},
+	}, map[string]string{
+		"user_id": "user_67890",
 	})
 	defer tool.End()
 
@@ -229,10 +236,7 @@ func runRecipeAgent() {
 	client := openai.NewClient(os.Getenv("OPENAI_API_KEY"))
 
 	// Create standalone agent with association properties
-	agent := traceloop.NewAgent(ctx, "recipe_generator", map[string]string{
-		"ab_testing_variant": "variant_a",
-		"user_id":            "user_67890",
-	})
+	agent := traceloop.NewAgent(ctx, "recipe_generator", associationProperties)
 	defer agent.End()
 
 	// User request

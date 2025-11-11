@@ -149,6 +149,8 @@ func historyJokesTool(ctx context.Context, agent *sdk.Agent, client *openai.Clie
 		Name:        "history_jokes",
 		Description: "Get some history jokes",
 		Parameters:  map[string]interface{}{},
+	}, map[string]string{
+		"user_id": "user_12345",
 	})
 	defer tool.End()
 
