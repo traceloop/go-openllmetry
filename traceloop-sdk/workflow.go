@@ -26,8 +26,8 @@ func (instance *Traceloop) NewWorkflow(ctx context.Context, attrs WorkflowAttrib
 	)
 
 	if attrs.ABTest != nil {
-		for key, activeVarient := range attrs.ABTest.VarientKeys {
-			if activeVarient {
+		for key, activeVariant := range attrs.ABTest.VariantKeys {
+			if activeVariant {
 				span.SetAttributes(attribute.String("traceloop.association.properties.ab_testing_variant", key))
 				break
 			}
@@ -79,8 +79,8 @@ func (workflow *Workflow) NewAgent(name string, associationProperties map[string
 	}
 
 	if workflow.Attributes.ABTest != nil {
-		for key, activeVarient := range workflow.Attributes.ABTest.VarientKeys {
-			if activeVarient {
+		for key, activeVariant := range workflow.Attributes.ABTest.VariantKeys {
+			if activeVariant {
 				associationProperties["ab_testing_variant"] = key
 			}
 		}

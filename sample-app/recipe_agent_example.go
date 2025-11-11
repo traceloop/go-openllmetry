@@ -15,7 +15,7 @@ var associationProperties = map[string]string{
 }
 
 var abTest = &model.ABTest{
-	VarientKeys: map[string]bool{
+	VariantKeys: map[string]bool{
 		"variant_a": false,
 		"variant_b": true,
 	},

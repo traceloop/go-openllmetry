@@ -9,7 +9,7 @@ const (
 	SpanKindWorkflow SpanKind = "workflow"
 )
 
-// The varient that is active will be added to the trace.
+// The variant that is active will be added to the trace.
 type ABTest struct {
-	VarientKeys map[string]bool `json:"varient_keys"`
+	VariantKeys map[string]bool `json:"variant_keys"`
 }
