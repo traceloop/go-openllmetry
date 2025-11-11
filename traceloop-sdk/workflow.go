@@ -65,6 +65,7 @@ func (workflow *Workflow) NewAgent(name string) *Agent {
 	)
 
 	return &Agent{
+		sdk:        workflow.sdk,
 		workflow:   workflow,
 		ctx:        aCtx,
 		Name:       name,

@@ -65,7 +65,7 @@ func createJoke(ctx context.Context, workflow *sdk.Workflow, client *openai.Clie
 	return resp.Choices[0].Message.Content, nil
 }
 
-func translateJokeToPirate(ctx context.Context, traceloop *sdk.Traceloop, workflow *sdk.Workflow, client *openai.Client, joke string) (string, error) {
+func translateJokeToPirate(ctx context.Context, workflow *sdk.Workflow, client *openai.Client, joke string) (string, error) {
 	// Log prompt
 	piratePrompt := fmt.Sprintf("Translate the below joke to pirate-like english:\n\n%s", joke)
 	prompt := sdk.Prompt{
@@ -82,6 +82,7 @@ func translateJokeToPirate(ctx context.Context, traceloop *sdk.Traceloop, workfl
 	}
 
 	agent := workflow.NewAgent("joke_translation")
+	defer agent.End()
 
 	llmSpan := agent.LogPrompt(prompt)
 	
@@ -147,6 +148,7 @@ func historyJokesTool(ctx context.Context, agent *sdk.Agent, client *openai.Clie
 		Description: "Get some history jokes",
 		Parameters:  map[string]interface{}{},
 	})
+	defer tool.End()
 
 	llmSpan := tool.LogPrompt(prompt)
 
@@ -271,7 +273,7 @@ func runJokeWorkflow() {
 	fmt.Printf("\nEnglish joke:\n%s\n\n", engJoke)
 
 	fmt.Println("Translating to pirate...")
-	pirateJoke, err := translateJokeToPirate(ctx, traceloop, wf, client, engJoke)
+	pirateJoke, err := translateJokeToPirate(ctx, wf, client, engJoke)
 	if err != nil {
 		fmt.Printf("Error translating joke: %v\n", err)
 		return
