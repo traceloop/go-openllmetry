@@ -15,7 +15,7 @@ var associationProperties = map[string]string{
 }
 
 var abTest = &model.ABTest{
-	VarientsKeys: map[string]bool{
+	VarientKeys: map[string]bool{
 		"variant_a": false,
 		"variant_b": true,
 	},
@@ -167,9 +167,7 @@ func cookingTimeEstimatorTool(ctx context.Context, agent *sdk.Agent, client *ope
 				},
 			},
 		},
-	}, map[string]string{
-		"user_id": "user_67890",
-	})
+	}, associationProperties)
 	defer tool.End()
 
 	prompt := sdk.Prompt{
@@ -238,9 +236,9 @@ func runRecipeAgent() {
 
 	// Create standalone agent with association properties
 	agent := traceloop.NewAgent(ctx, "recipe_generator", sdk.AgentAttributes{
-		Name: "recipe_generator",
+		Name:                  "recipe_generator",
 		AssociationProperties: associationProperties,
-		ABTest: abTest,
+		ABTest:                abTest,
 	})
 	defer agent.End()
 

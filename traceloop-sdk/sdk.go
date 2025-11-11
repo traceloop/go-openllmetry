@@ -21,7 +21,6 @@ import (
 
 const PromptsPath = "/v1/traceloop/prompts"
 
-
 type Traceloop struct {
 	config         Config
 	promptRegistry model.PromptRegistry
@@ -29,7 +28,6 @@ type Traceloop struct {
 	tracerProvider *trace.TracerProvider
 	http.Client
 }
-
 
 func NewClient(ctx context.Context, config Config) (*Traceloop, error) {
 	instance := Traceloop{
@@ -153,7 +151,7 @@ func (instance *Traceloop) NewAgent(ctx context.Context, name string, agentAttrs
 	}
 
 	if agentAttrs.ABTest != nil {
-		for key, activeVarient := range agentAttrs.ABTest.VarientsKeys {
+		for key, activeVarient := range agentAttrs.ABTest.VarientKeys {
 			if activeVarient {
 				agentAttrs.AssociationProperties["ab_testing_variant"] = key
 				break
@@ -169,9 +167,9 @@ func (instance *Traceloop) NewAgent(ctx context.Context, name string, agentAttrs
 	span.SetAttributes(attrs...)
 
 	return &Agent{
-		sdk:      instance,
-		workflow: nil,
-		ctx:      aCtx,
+		sdk:        instance,
+		workflow:   nil,
+		ctx:        aCtx,
 		Attributes: agentAttrs,
 	}
 }
@@ -199,7 +197,6 @@ func (instance *Traceloop) LogPrompt(ctx context.Context, prompt Prompt, context
 	for key, value := range contextAttrs.AssociationProperties {
 		attrs = append(attrs, attribute.String("traceloop.association.properties."+key, value))
 	}
-	
 
 	span.SetAttributes(attrs...)
 	setMessagesAttribute(span, "llm.prompts", prompt.Messages)

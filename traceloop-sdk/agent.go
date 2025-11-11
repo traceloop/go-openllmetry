@@ -24,6 +24,7 @@ func (agent *Agent) End() {
 func (agent *Agent) LogPrompt(prompt Prompt) LLMSpan {
 	// Merge workflow and agent association properties
 	contextAttrs := ContextAttributes{
+		AgentName:             &agent.Attributes.Name,
 		AssociationProperties: make(map[string]string),
 	}
 

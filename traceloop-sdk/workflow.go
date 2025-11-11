@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/traceloop/go-openllmetry/traceloop-sdk/model"
 	semconvai "github.com/traceloop/go-openllmetry/semconv-ai"
+	"github.com/traceloop/go-openllmetry/traceloop-sdk/model"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -26,12 +26,12 @@ func (instance *Traceloop) NewWorkflow(ctx context.Context, attrs WorkflowAttrib
 	)
 
 	if attrs.ABTest != nil {
-		for key, activeVarient := range attrs.ABTest.VarientsKeys {
+		for key, activeVarient := range attrs.ABTest.VarientKeys {
 			if activeVarient {
 				span.SetAttributes(attribute.String("traceloop.association.properties.ab_testing_variant", key))
 				break
 			}
-		}	
+		}
 	}
 
 	return &Workflow{
@@ -79,7 +79,7 @@ func (workflow *Workflow) NewAgent(name string, associationProperties map[string
 	}
 
 	if workflow.Attributes.ABTest != nil {
-		for key, activeVarient := range workflow.Attributes.ABTest.VarientsKeys {
+		for key, activeVarient := range workflow.Attributes.ABTest.VarientKeys {
 			if activeVarient {
 				associationProperties["ab_testing_variant"] = key
 			}
@@ -102,4 +102,3 @@ func (workflow *Workflow) NewAgent(name string, associationProperties map[string
 		},
 	}
 }
-
