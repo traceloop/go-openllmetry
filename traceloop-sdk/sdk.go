@@ -21,10 +21,6 @@ import (
 
 const PromptsPath = "/v1/traceloop/prompts"
 
-const (
-	ToolType = "tool"
-	AgentType = "agent"
-)
 
 type Traceloop struct {
 	config         Config
@@ -179,7 +175,7 @@ func (instance *Traceloop) LogToolCall(ctx context.Context, attrs ToolCallAttrib
 
 	spanAttrs := []attribute.KeyValue{
 		semconvai.TraceloopWorkflowName.String(workflowAttrs.Name),
-		semconvai.TraceloopSpanKind.String(ToolType),
+		semconvai.TraceloopSpanKind.String(string(model.SpanKindTool)),
 		semconvai.TraceloopEntityName.String(attrs.Name),
 	}
 
@@ -202,7 +198,7 @@ func (instance *Traceloop) LogAgent(ctx context.Context, attrs AgentAttributes, 
 
 	spanAttrs := []attribute.KeyValue{
 		semconvai.TraceloopWorkflowName.String(workflowAttrs.Name),
-		semconvai.TraceloopSpanKind.String(AgentType),
+		semconvai.TraceloopSpanKind.String(string(model.SpanKindAgent)),
 		semconvai.LLMAgentName.String(attrs.Name),
 	}
 

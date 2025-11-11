@@ -19,11 +19,3 @@ func (task *Task) End() {
 func (task *Task) LogPrompt(prompt Prompt) LLMSpan {
 	return task.workflow.sdk.LogPrompt(task.ctx, prompt, task.workflow.Attributes)
 }
-
-func (task *Task) LogAgent(attrs AgentAttributes) LLMSpan {
-	return task.workflow.sdk.LogAgent(task.ctx, attrs, task.workflow.Attributes)
-}
-
-func (task *Task) LogToolCall(attrs ToolCallAttributes) LLMSpan {
-	return task.workflow.sdk.LogToolCall(task.ctx, attrs, task.workflow.Attributes)
-}
