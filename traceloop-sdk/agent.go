@@ -52,6 +52,10 @@ func (agent *Agent) NewTool(name string, toolType string, toolFunction ToolFunct
 		semconvai.TraceloopEntityName.String(name),
 	}
 
+	if agent.workflow != nil {
+		attrs = append(attrs, semconvai.TraceloopWorkflowName.String(agent.workflow.Attributes.Name))
+	}
+
 	for key, value := range agent.Attributes.AssociationProperties {
 		attrs = append(attrs, attribute.String("traceloop.association.properties."+key, value))
 	}

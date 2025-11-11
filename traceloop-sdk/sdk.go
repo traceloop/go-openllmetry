@@ -151,6 +151,9 @@ func (instance *Traceloop) NewAgent(ctx context.Context, name string, agentAttrs
 	}
 
 	if agentAttrs.ABTest != nil {
+		if agentAttrs.AssociationProperties == nil {
+			agentAttrs.AssociationProperties = make(map[string]string)
+		}
 		for key, activeVariant := range agentAttrs.ABTest.VariantKeys {
 			if activeVariant {
 				agentAttrs.AssociationProperties["ab_testing_variant"] = key

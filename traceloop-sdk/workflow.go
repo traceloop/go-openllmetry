@@ -3,6 +3,7 @@ package traceloop
 import (
 	"context"
 	"fmt"
+	"maps"
 
 	semconvai "github.com/traceloop/go-openllmetry/semconv-ai"
 	"github.com/traceloop/go-openllmetry/traceloop-sdk/model"
@@ -78,15 +79,17 @@ func (workflow *Workflow) NewAgent(name string, associationProperties map[string
 		semconvai.TraceloopEntityName.String(name),
 	}
 
+	agentAssociationProps := make(map[string]string, len(associationProperties)+1)
+	maps.Copy(agentAssociationProps, associationProperties)
+
 	if workflow.Attributes.ABTest != nil {
 		for key, activeVariant := range workflow.Attributes.ABTest.VariantKeys {
 			if activeVariant {
-				associationProperties["ab_testing_variant"] = key
+				agentAssociationProps["ab_testing_variant"] = key
 			}
 		}
 	}
-	// Add agent-specific association properties to the span
-	for key, value := range associationProperties {
+	for key, value := range agentAssociationProps {
 		attrs = append(attrs, attribute.String("traceloop.association.properties."+key, value))
 	}
 
@@ -98,7 +101,7 @@ func (workflow *Workflow) NewAgent(name string, associationProperties map[string
 		ctx:      aCtx,
 		Attributes: AgentAttributes{
 			Name:                  name,
-			AssociationProperties: associationProperties,
+			AssociationProperties: agentAssociationProps,
 		},
 	}
 }
