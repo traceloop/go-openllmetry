@@ -26,7 +26,7 @@ func workflowMain() {
 
 	wf := traceloop.NewWorkflow(ctx, tlp.WorkflowAttributes{
 		Name: "history_generation",
-	}, nil)
+	})
 	defer wf.End()
 
 	factGenTask := wf.NewTask("current_date_fact_generation")

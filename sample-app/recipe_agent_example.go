@@ -53,7 +53,6 @@ func ingredientValidatorTool(ctx context.Context, agent *sdk.Agent, client *open
 
 	llmSpan := tool.LogPrompt(prompt)
 
-	// Make API call
 	resp, err := client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
 		Model: "gpt-3.5-turbo",
 		Messages: []openai.ChatCompletionMessage{
@@ -67,7 +66,6 @@ func ingredientValidatorTool(ctx context.Context, agent *sdk.Agent, client *open
 		return "", fmt.Errorf("CreateChatCompletion error: %w", err)
 	}
 
-	// Log completion
 	var completionMsgs []sdk.Message
 	for _, choice := range resp.Choices {
 		completionMsgs = append(completionMsgs, sdk.Message{
@@ -121,7 +119,6 @@ func nutritionCalculatorTool(ctx context.Context, agent *sdk.Agent, client *open
 
 	llmSpan := tool.LogPrompt(prompt)
 
-	// Make API call
 	resp, err := client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
 		Model: "gpt-3.5-turbo",
 		Messages: []openai.ChatCompletionMessage{
@@ -135,7 +132,6 @@ func nutritionCalculatorTool(ctx context.Context, agent *sdk.Agent, client *open
 		return "", fmt.Errorf("CreateChatCompletion error: %w", err)
 	}
 
-	// Log completion
 	var completionMsgs []sdk.Message
 	for _, choice := range resp.Choices {
 		completionMsgs = append(completionMsgs, sdk.Message{
@@ -191,7 +187,6 @@ func cookingTimeEstimatorTool(ctx context.Context, agent *sdk.Agent, client *ope
 
 	llmSpan := tool.LogPrompt(prompt)
 
-	// Make API call
 	resp, err := client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
 		Model: "gpt-3.5-turbo",
 		Messages: []openai.ChatCompletionMessage{
@@ -205,7 +200,6 @@ func cookingTimeEstimatorTool(ctx context.Context, agent *sdk.Agent, client *ope
 		return "", fmt.Errorf("CreateChatCompletion error: %w", err)
 	}
 
-	// Log completion
 	var completionMsgs []sdk.Message
 	for _, choice := range resp.Choices {
 		completionMsgs = append(completionMsgs, sdk.Message{
@@ -246,10 +240,10 @@ func runRecipeAgent() {
 	agent := traceloop.NewAgent(ctx, "recipe_generator", sdk.AgentAttributes{
 		Name: "recipe_generator",
 		AssociationProperties: associationProperties,
-	}, abTest)
+		ABTest: abTest,
+	})
 	defer agent.End()
 
-	// User request
 	userRequest := "Create a healthy pasta dish with vegetables"
 	fmt.Printf("User request: %s\n\n", userRequest)
 
@@ -284,7 +278,6 @@ func runRecipeAgent() {
 		return
 	}
 
-	// Log completion
 	var completionMsgs []sdk.Message
 	for _, choice := range resp.Choices {
 		completionMsgs = append(completionMsgs, sdk.Message{

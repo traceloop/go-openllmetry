@@ -15,7 +15,6 @@ type Agent struct {
 	workflow   *Workflow
 	ctx        context.Context
 	Attributes AgentAttributes `json:"agent_attributes"`
-	ABTest     *model.ABTest   `json:"ab_test"`
 }
 
 func (agent *Agent) End() {

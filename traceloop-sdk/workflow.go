@@ -14,10 +14,9 @@ type Workflow struct {
 	sdk        *Traceloop
 	ctx        context.Context
 	Attributes WorkflowAttributes `json:"workflow_attributes"`
-	ABTest 	   *model.ABTest `json:"ab_test"`
 }
 
-func (instance *Traceloop) NewWorkflow(ctx context.Context, attrs WorkflowAttributes, abTest *model.ABTest) *Workflow {
+func (instance *Traceloop) NewWorkflow(ctx context.Context, attrs WorkflowAttributes) *Workflow {
 	wCtx, span := instance.getTracer().Start(ctx, fmt.Sprintf("%s.workflow", attrs.Name), trace.WithNewRoot())
 
 	span.SetAttributes(
@@ -26,8 +25,8 @@ func (instance *Traceloop) NewWorkflow(ctx context.Context, attrs WorkflowAttrib
 		semconvai.TraceloopEntityName.String(attrs.Name),
 	)
 
-	if abTest != nil {
-		for key, activeVarient := range abTest.VarientsKeys {
+	if attrs.ABTest != nil {
+		for key, activeVarient := range attrs.ABTest.VarientsKeys {
 			if activeVarient {
 				span.SetAttributes(attribute.String("traceloop.association.properties.ab_testing_variant", key))
 				break
@@ -79,8 +78,8 @@ func (workflow *Workflow) NewAgent(name string, associationProperties map[string
 		semconvai.TraceloopEntityName.String(name),
 	}
 
-	if workflow.ABTest != nil {
-		for key, activeVarient := range workflow.ABTest.VarientsKeys {
+	if workflow.Attributes.ABTest != nil {
+		for key, activeVarient := range workflow.Attributes.ABTest.VarientsKeys {
 			if activeVarient {
 				associationProperties["ab_testing_variant"] = key
 			}
