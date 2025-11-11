@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/traceloop/go-openllmetry/traceloop-sdk/model"
 	semconvai "github.com/traceloop/go-openllmetry/semconv-ai"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -14,18 +15,12 @@ type Workflow struct {
 	Attributes WorkflowAttributes `json:"workflow_attributes"`
 }
 
-type Task struct {
-	workflow *Workflow
-	ctx      context.Context
-	Name     string `json:"name"`
-}
-
 func (instance *Traceloop) NewWorkflow(ctx context.Context, attrs WorkflowAttributes) *Workflow {
 	wCtx, span := instance.getTracer().Start(ctx, fmt.Sprintf("%s.workflow", attrs.Name), trace.WithNewRoot())
 
 	span.SetAttributes(
 		semconvai.TraceloopWorkflowName.String(attrs.Name),
-		semconvai.TraceloopSpanKind.String("workflow"),
+		semconvai.TraceloopSpanKind.String(string(model.SpanKindWorkflow)),
 		semconvai.TraceloopEntityName.String(attrs.Name),
 	)
 
@@ -49,7 +44,7 @@ func (workflow *Workflow) NewTask(name string) *Task {
 
 	span.SetAttributes(
 		semconvai.TraceloopWorkflowName.String(workflow.Attributes.Name),
-		semconvai.TraceloopSpanKind.String("task"),
+		semconvai.TraceloopSpanKind.String(string(model.SpanKindTask)),
 		semconvai.TraceloopEntityName.String(name),
 	)
 
@@ -60,10 +55,10 @@ func (workflow *Workflow) NewTask(name string) *Task {
 	}
 }
 
-func (task *Task) End() {
-	trace.SpanFromContext(task.ctx).End()
+func (workflow *Workflow) LogAgent(attrs AgentAttributes) (LLMSpan, error) {
+	return workflow.sdk.LogAgent(workflow.ctx, attrs, workflow.Attributes)
 }
 
-func (task *Task) LogPrompt(prompt Prompt) (LLMSpan, error) {
-	return task.workflow.sdk.LogPrompt(task.ctx, prompt, task.workflow.Attributes)
+func (workflow *Workflow) LogToolCall(attrs ToolCallAttributes) (LLMSpan, error) {
+	return workflow.sdk.LogToolCall(workflow.ctx, attrs, workflow.Attributes)
 }

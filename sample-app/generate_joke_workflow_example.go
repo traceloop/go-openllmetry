@@ -84,9 +84,14 @@ func translateJokeToPirate(ctx context.Context, traceloop *sdk.Traceloop, workfl
 		},
 	}
 
-	llmSpan, err := traceloop.LogAgent(ctx, sdk.AgentAttributes{
+	llmSpan, err := workflow.LogAgent(sdk.AgentAttributes{
 		Name: "joke_translation",
-	}, prompt, workflow.Attributes)
+	})
+	if err != nil {
+		return "", fmt.Errorf("LogPrompt error: %w", err)
+	}
+
+	llmSpan, err = workflow.LogPrompt(prompt)
 	if err != nil {
 		return "", fmt.Errorf("LogPrompt error: %w", err)
 	}
@@ -148,11 +153,16 @@ func historyJokesTool(ctx context.Context, traceloop *sdk.Traceloop, workflow *s
 		},
 	}
 
-	llmSpan, err := traceloop.LogToolCall(ctx, sdk.ToolCallAttributes{
-		Name: "history_jokes",
-	}, prompt, workflow.Attributes)
+	llmSpan, err := workflow.LogPrompt(prompt)
 	if err != nil {
 		return "", fmt.Errorf("LogPrompt error: %w", err)
+	}
+	
+	_, err = workflow.LogToolCall(sdk.ToolCallAttributes{
+		Name: "history_jokes",
+	})
+	if err != nil {
+		return "", fmt.Errorf("LogToolCall error: %w", err)
 	}
 
 	// Make API call
@@ -257,7 +267,6 @@ func runJokeWorkflow() {
 	}
 	defer func() { traceloop.Shutdown(ctx) }()
 
-	// Create OpenAI client
 	client := openai.NewClient(os.Getenv("OPENAI_API_KEY"))
 
 	// Create workflow

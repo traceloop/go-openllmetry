@@ -21,6 +21,11 @@ import (
 
 const PromptsPath = "/v1/traceloop/prompts"
 
+const (
+	ToolType = "tool"
+	AgentType = "agent"
+)
+
 type Traceloop struct {
 	config         Config
 	promptRegistry model.PromptRegistry
@@ -184,17 +189,14 @@ func (llmSpan *LLMSpan) LogCompletion(ctx context.Context, completion Completion
 	return nil
 }
 
-// LogToolCall logs a tool call with the specified name and prompt
-func (instance *Traceloop) LogToolCall(ctx context.Context, attrs ToolCallAttributes, prompt Prompt, workflowAttrs WorkflowAttributes) (LLMSpan, error) {
+// LogToolCall logs a tool call with the specified name
+func (instance *Traceloop) LogToolCall(ctx context.Context, attrs ToolCallAttributes, workflowAttrs WorkflowAttributes) (LLMSpan, error) {
 	spanName := fmt.Sprintf("%s.tool", attrs.Name)
 	_, span := instance.getTracer().Start(ctx, spanName)
 
 	spanAttrs := []attribute.KeyValue{
-		semconvai.LLMVendor.String(prompt.Vendor),
-		semconvai.LLMRequestModel.String(prompt.Model),
-		semconvai.LLMRequestType.String(prompt.Mode),
 		semconvai.TraceloopWorkflowName.String(workflowAttrs.Name),
-		semconvai.TraceloopSpanKind.String("tool"),
+		semconvai.TraceloopSpanKind.String(ToolType),
 		semconvai.TraceloopEntityName.String(attrs.Name),
 	}
 
@@ -204,25 +206,20 @@ func (instance *Traceloop) LogToolCall(ctx context.Context, attrs ToolCallAttrib
 	}
 
 	span.SetAttributes(spanAttrs...)
-	setMessagesAttribute(span, "llm.prompts", prompt.Messages)
-	setToolsAttribute(span, prompt.Tools)
 
 	return LLMSpan{
 		span: span,
 	}, nil
 }
 
-// LogAgent logs an agent with the specified name and prompt
-func (instance *Traceloop) LogAgent(ctx context.Context, attrs AgentAttributes, prompt Prompt, workflowAttrs WorkflowAttributes) (LLMSpan, error) {
+// LogAgent logs an agent with the specified name
+func (instance *Traceloop) LogAgent(ctx context.Context, attrs AgentAttributes, workflowAttrs WorkflowAttributes) (LLMSpan, error) {
 	spanName := fmt.Sprintf("%s.agent", attrs.Name)
 	_, span := instance.getTracer().Start(ctx, spanName)
 
 	spanAttrs := []attribute.KeyValue{
-		semconvai.LLMVendor.String(prompt.Vendor),
-		semconvai.LLMRequestModel.String(prompt.Model),
-		semconvai.LLMRequestType.String(prompt.Mode),
 		semconvai.TraceloopWorkflowName.String(workflowAttrs.Name),
-		semconvai.TraceloopSpanKind.String("agent"),
+		semconvai.TraceloopSpanKind.String(AgentType),
 		semconvai.LLMAgentName.String(attrs.Name),
 	}
 
@@ -232,8 +229,6 @@ func (instance *Traceloop) LogAgent(ctx context.Context, attrs AgentAttributes, 
 	}
 
 	span.SetAttributes(spanAttrs...)
-	setMessagesAttribute(span, "llm.prompts", prompt.Messages)
-	setToolsAttribute(span, prompt.Tools)
 
 	return LLMSpan{
 		span: span,
