@@ -1,6 +1,6 @@
 package traceloop
 
-import "github.com/traceloop/go-openllmetry/traceloop-sdk/model"
+import "github.com/traceloop/go-openllmetry/semconv-ai"
 
 type Message struct {
 	Index     int        `json:"index"`
@@ -30,7 +30,7 @@ type Completion struct {
 type WorkflowAttributes struct {
 	Name                  string            `json:"workflow_name"`
 	AssociationProperties map[string]string `json:"association_properties"`
-	ABTest                *model.ABTest   `json:"ab_test"`
+	ABTest                *semconvai.ABTest   `json:"ab_test"`
 }
 
 type ContextAttributes struct {
@@ -69,5 +69,5 @@ type ToolCallAttributes struct {
 type AgentAttributes struct {
 	Name                  string            `json:"agent_name"`
 	AssociationProperties map[string]string `json:"association_properties"`
-	ABTest                *model.ABTest   `json:"ab_test"`
+	ABTest                *semconvai.ABTest   `json:"ab_test"`
 }

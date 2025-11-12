@@ -145,7 +145,7 @@ func (instance *Traceloop) NewAgent(ctx context.Context, name string, agentAttrs
 	aCtx, span := instance.getTracer().Start(ctx, fmt.Sprintf("%s.agent", name), apitrace.WithNewRoot())
 
 	attrs := []attribute.KeyValue{
-		semconvai.TraceloopSpanKind.String(string(model.SpanKindAgent)),
+		semconvai.TraceloopSpanKind.String(string(semconvai.SpanKindAgent)),
 		semconvai.TraceloopEntityName.String(name),
 		semconvai.LLMAgentName.String(name),
 	}
@@ -217,7 +217,7 @@ func (instance *Traceloop) LogToolCall(ctx context.Context, attrs ToolCallAttrib
 
 	spanAttrs := []attribute.KeyValue{
 		semconvai.TraceloopWorkflowName.String(workflowAttrs.Name),
-		semconvai.TraceloopSpanKind.String(string(model.SpanKindTool)),
+		semconvai.TraceloopSpanKind.String(string(semconvai.SpanKindTool)),
 		semconvai.TraceloopEntityName.String(attrs.Name),
 	}
 
@@ -240,7 +240,7 @@ func (instance *Traceloop) LogAgent(ctx context.Context, attrs AgentAttributes, 
 
 	spanAttrs := []attribute.KeyValue{
 		semconvai.TraceloopWorkflowName.String(workflowAttrs.Name),
-		semconvai.TraceloopSpanKind.String(string(model.SpanKindAgent)),
+		semconvai.TraceloopSpanKind.String(string(semconvai.SpanKindAgent)),
 		semconvai.LLMAgentName.String(attrs.Name),
 	}
 

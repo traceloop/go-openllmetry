@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	semconvai "github.com/traceloop/go-openllmetry/semconv-ai"
-	"github.com/traceloop/go-openllmetry/traceloop-sdk/model"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -48,7 +47,7 @@ func (agent *Agent) NewTool(name string, toolType string, toolFunction ToolFunct
 	toolCtx, span := agent.sdk.getTracer().Start(agent.ctx, fmt.Sprintf("%s.tool", name))
 	attrs := []attribute.KeyValue{
 		semconvai.LLMAgentName.String(agent.Attributes.Name),
-		semconvai.TraceloopSpanKind.String(string(model.SpanKindTool)),
+		semconvai.TraceloopSpanKind.String(string(semconvai.SpanKindTool)),
 		semconvai.TraceloopEntityName.String(name),
 	}
 

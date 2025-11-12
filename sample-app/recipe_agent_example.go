@@ -6,15 +6,15 @@ import (
 	"os"
 
 	"github.com/sashabaranov/go-openai"
+	semconvai "github.com/traceloop/go-openllmetry/semconv-ai"
 	sdk "github.com/traceloop/go-openllmetry/traceloop-sdk"
-	"github.com/traceloop/go-openllmetry/traceloop-sdk/model"
 )
 
 var associationProperties = map[string]string{
 	"user_id": "user_67890",
 }
 
-var abTest = &model.ABTest{
+var abTest = &semconvai.ABTest{
 	VariantKeys: map[string]bool{
 		"variant_a": false,
 		"variant_b": true,

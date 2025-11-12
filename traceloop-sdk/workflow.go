@@ -6,7 +6,6 @@ import (
 	"maps"
 
 	semconvai "github.com/traceloop/go-openllmetry/semconv-ai"
-	"github.com/traceloop/go-openllmetry/traceloop-sdk/model"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -22,7 +21,7 @@ func (instance *Traceloop) NewWorkflow(ctx context.Context, attrs WorkflowAttrib
 
 	span.SetAttributes(
 		semconvai.TraceloopWorkflowName.String(attrs.Name),
-		semconvai.TraceloopSpanKind.String(string(model.SpanKindWorkflow)),
+		semconvai.TraceloopSpanKind.String(string(semconvai.SpanKindWorkflow)),
 		semconvai.TraceloopEntityName.String(attrs.Name),
 	)
 
@@ -59,7 +58,7 @@ func (workflow *Workflow) NewTask(name string) *Task {
 
 	span.SetAttributes(
 		semconvai.TraceloopWorkflowName.String(workflow.Attributes.Name),
-		semconvai.TraceloopSpanKind.String(string(model.SpanKindTask)),
+		semconvai.TraceloopSpanKind.String(string(semconvai.SpanKindTask)),
 		semconvai.TraceloopEntityName.String(name),
 	)
 
@@ -75,7 +74,7 @@ func (workflow *Workflow) NewAgent(name string, associationProperties map[string
 
 	attrs := []attribute.KeyValue{
 		semconvai.TraceloopWorkflowName.String(workflow.Attributes.Name),
-		semconvai.TraceloopSpanKind.String(string(model.SpanKindAgent)),
+		semconvai.TraceloopSpanKind.String(string(semconvai.SpanKindAgent)),
 		semconvai.TraceloopEntityName.String(name),
 	}
 

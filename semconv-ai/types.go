@@ -1,4 +1,4 @@
-package model
+package semconvai
 
 type SpanKind string
 
