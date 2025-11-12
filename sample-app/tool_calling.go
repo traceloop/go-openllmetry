@@ -81,21 +81,18 @@ func runToolCallingExample() {
 		Tools: tools,
 	}
 
-	workflowAttrs := sdk.WorkflowAttributes{
-		Name: "tool-calling-example",
+	workflowName := "tool-calling-example"
+	contextAttrs := sdk.ContextAttributes{
+		WorkflowName: &workflowName,
 		AssociationProperties: map[string]string{
 			"user_id": "demo-user",
 		},
 	}
 
 	fmt.Printf("User: %s\n", userPrompt)
-	
+
 	// Log the prompt
-	llmSpan, err := traceloop.LogPrompt(ctx, prompt, workflowAttrs)
-	if err != nil {
-		fmt.Printf("Error logging prompt: %v\n", err)
-		return
-	}
+	llmSpan := traceloop.LogPrompt(ctx, prompt, contextAttrs)
 
 	// Make API call to OpenAI
 	startTime := time.Now()
@@ -175,11 +172,7 @@ func runToolCallingExample() {
 		PromptTokens:     int(resp.Usage.PromptTokens),
 	}
 
-	err = llmSpan.LogCompletion(ctx, completion, usage)
-	if err != nil {
-		fmt.Printf("Error logging completion: %v\n", err)
-		return
-	}
+	llmSpan.LogCompletion(ctx, completion, usage)
 
 	// If tool calls were made, execute them
 	if len(resp.Choices[0].Message.ToolCalls) > 0 {

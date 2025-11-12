@@ -70,10 +70,10 @@ func TestLogPromptSpanAttributes(t *testing.T) {
 	}
 
 	// Log the prompt using new workflow API
-	llmSpan, err := tl.LogPrompt(context.Background(), prompt, workflowAttrs)
-	if err != nil {
-		t.Fatalf("LogPrompt failed: %v", err)
-	}
+	llmSpan := tl.LogPrompt(context.Background(), prompt, ContextAttributes{
+		WorkflowName: &workflowAttrs.Name,
+		AssociationProperties: workflowAttrs.AssociationProperties,
+	})
 
 	// Log completion with tool calls
 	completion := Completion{
@@ -103,10 +103,8 @@ func TestLogPromptSpanAttributes(t *testing.T) {
 		PromptTokens:     82,
 	}
 
-	err = llmSpan.LogCompletion(context.Background(), completion, usage)
-	if err != nil {
-		t.Fatalf("LogCompletion failed: %v", err)
-	}
+	llmSpan.LogCompletion(context.Background(), completion, usage)
+	
 
 	// Get the recorded spans
 	spans := exporter.GetSpans()

@@ -22,7 +22,17 @@ func main() {
 		runToolCallingExample()
 		return
 	}
-	
+
+	if len(os.Args) > 1 && os.Args[1] == "recipe-agent" {
+		runRecipeAgent()
+		return
+	}
+
+	if len(os.Args) > 1 && os.Args[1] == "joke-workflow" {
+		runJokeWorkflow()
+		return
+	}
+
 	// Default to workflow example using prompt registry
 	workflowExample()
 }
@@ -61,7 +71,8 @@ func workflowExample() {
 	}
 
 	// Log the prompt
-	llmSpan, err := traceloop.LogPrompt(
+	workflowName := "example-workflow"
+	llmSpan := traceloop.LogPrompt(
 		ctx,
 		sdk.Prompt{
 			Vendor:   "openai",
@@ -69,8 +80,8 @@ func workflowExample() {
 			Model:    request.Model,
 			Messages: promptMsgs,
 		},
-		sdk.WorkflowAttributes{
-			Name: "example-workflow",
+		sdk.ContextAttributes{
+			WorkflowName: &workflowName,
 			AssociationProperties: map[string]string{
 				"user_id": "demo-user",
 			},
@@ -103,7 +114,7 @@ func workflowExample() {
 	}
 
 	// Log the completion
-	err = llmSpan.LogCompletion(ctx, sdk.Completion{
+	llmSpan.LogCompletion(ctx, sdk.Completion{	
 		Model:    resp.Model,
 		Messages: completionMsgs,
 	}, sdk.Usage{
@@ -111,10 +122,6 @@ func workflowExample() {
 		CompletionTokens: resp.Usage.CompletionTokens,
 		PromptTokens:     resp.Usage.PromptTokens,
 	})
-	if err != nil {
-		fmt.Printf("LogCompletion error: %v\n", err)
-		return
-	}
 
 	fmt.Println(resp.Choices[0].Message.Content)
 }

@@ -3,8 +3,10 @@ package traceloop
 import (
 	"context"
 	"fmt"
+	"maps"
 
 	semconvai "github.com/traceloop/go-openllmetry/semconv-ai"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -14,20 +16,23 @@ type Workflow struct {
 	Attributes WorkflowAttributes `json:"workflow_attributes"`
 }
 
-type Task struct {
-	workflow *Workflow
-	ctx      context.Context
-	Name     string `json:"name"`
-}
-
 func (instance *Traceloop) NewWorkflow(ctx context.Context, attrs WorkflowAttributes) *Workflow {
 	wCtx, span := instance.getTracer().Start(ctx, fmt.Sprintf("%s.workflow", attrs.Name), trace.WithNewRoot())
 
 	span.SetAttributes(
 		semconvai.TraceloopWorkflowName.String(attrs.Name),
-		semconvai.TraceloopSpanKind.String("workflow"),
+		semconvai.TraceloopSpanKind.String(string(semconvai.SpanKindWorkflow)),
 		semconvai.TraceloopEntityName.String(attrs.Name),
 	)
+
+	if attrs.ABTest != nil {
+		for key, activeVariant := range attrs.ABTest.VariantKeys {
+			if activeVariant {
+				span.SetAttributes(attribute.String("traceloop.association.properties.ab_testing_variant", key))
+				break
+			}
+		}
+	}
 
 	return &Workflow{
 		sdk:        instance,
@@ -40,8 +45,12 @@ func (workflow *Workflow) End() {
 	trace.SpanFromContext(workflow.ctx).End()
 }
 
-func (workflow *Workflow) LogPrompt(prompt Prompt) (LLMSpan, error) {
-	return workflow.sdk.LogPrompt(workflow.ctx, prompt, workflow.Attributes)
+func (workflow *Workflow) LogPrompt(prompt Prompt) LLMSpan {
+	contextAttrs := ContextAttributes{
+		WorkflowName:          &workflow.Attributes.Name,
+		AssociationProperties: workflow.Attributes.AssociationProperties,
+	}
+	return workflow.sdk.LogPrompt(workflow.ctx, prompt, contextAttrs)
 }
 
 func (workflow *Workflow) NewTask(name string) *Task {
@@ -49,7 +58,7 @@ func (workflow *Workflow) NewTask(name string) *Task {
 
 	span.SetAttributes(
 		semconvai.TraceloopWorkflowName.String(workflow.Attributes.Name),
-		semconvai.TraceloopSpanKind.String("task"),
+		semconvai.TraceloopSpanKind.String(string(semconvai.SpanKindTask)),
 		semconvai.TraceloopEntityName.String(name),
 	)
 
@@ -60,10 +69,38 @@ func (workflow *Workflow) NewTask(name string) *Task {
 	}
 }
 
-func (task *Task) End() {
-	trace.SpanFromContext(task.ctx).End()
-}
+func (workflow *Workflow) NewAgent(name string, associationProperties map[string]string) *Agent {
+	aCtx, span := workflow.sdk.getTracer().Start(workflow.ctx, fmt.Sprintf("%s.agent", name))
 
-func (task *Task) LogPrompt(prompt Prompt) (LLMSpan, error) {
-	return task.workflow.sdk.LogPrompt(task.ctx, prompt, task.workflow.Attributes)
+	attrs := []attribute.KeyValue{
+		semconvai.TraceloopWorkflowName.String(workflow.Attributes.Name),
+		semconvai.TraceloopSpanKind.String(string(semconvai.SpanKindAgent)),
+		semconvai.TraceloopEntityName.String(name),
+	}
+
+	agentAssociationProps := make(map[string]string, len(associationProperties)+1)
+	maps.Copy(agentAssociationProps, associationProperties)
+
+	if workflow.Attributes.ABTest != nil {
+		for key, activeVariant := range workflow.Attributes.ABTest.VariantKeys {
+			if activeVariant {
+				agentAssociationProps["ab_testing_variant"] = key
+			}
+		}
+	}
+	for key, value := range agentAssociationProps {
+		attrs = append(attrs, attribute.String("traceloop.association.properties."+key, value))
+	}
+
+	span.SetAttributes(attrs...)
+
+	return &Agent{
+		sdk:      workflow.sdk,
+		workflow: workflow,
+		ctx:      aCtx,
+		Attributes: AgentAttributes{
+			Name:                  name,
+			AssociationProperties: agentAssociationProps,
+		},
+	}
 }

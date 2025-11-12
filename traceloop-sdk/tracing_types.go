@@ -1,5 +1,7 @@
 package traceloop
 
+import "github.com/traceloop/go-openllmetry/semconv-ai"
+
 type Message struct {
 	Index     int        `json:"index"`
 	Role      string     `json:"role"`
@@ -28,6 +30,13 @@ type Completion struct {
 type WorkflowAttributes struct {
 	Name                  string            `json:"workflow_name"`
 	AssociationProperties map[string]string `json:"association_properties"`
+	ABTest                *semconvai.ABTest   `json:"ab_test"`
+}
+
+type ContextAttributes struct {
+	WorkflowName          *string           `json:"workflow_name,omitempty"`
+	AgentName             *string           `json:"agent_name,omitempty"`
+	AssociationProperties map[string]string `json:"association_properties,omitempty"`
 }
 
 type Usage struct {
@@ -42,11 +51,6 @@ type ToolFunction struct {
 	Parameters  interface{} `json:"parameters"`
 }
 
-type Tool struct {
-	Type     string       `json:"type"`
-	Function ToolFunction `json:"function,omitempty"`
-}
-
 type ToolCall struct {
 	ID       string           `json:"id"`
 	Type     string           `json:"type"`
@@ -56,4 +60,14 @@ type ToolCall struct {
 type ToolCallFunction struct {
 	Name      string `json:"name"`
 	Arguments string `json:"arguments"`
+}
+
+type ToolCallAttributes struct {
+	Name string `json:"name"`
+}
+
+type AgentAttributes struct {
+	Name                  string            `json:"agent_name"`
+	AssociationProperties map[string]string `json:"association_properties"`
+	ABTest                *semconvai.ABTest   `json:"ab_test"`
 }

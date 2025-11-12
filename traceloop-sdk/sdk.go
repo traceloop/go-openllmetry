@@ -29,10 +29,6 @@ type Traceloop struct {
 	http.Client
 }
 
-type LLMSpan struct {
-	span apitrace.Span
-}
-
 func NewClient(ctx context.Context, config Config) (*Traceloop, error) {
 	instance := Traceloop{
 		config:         config,
@@ -144,8 +140,45 @@ func (instance *Traceloop) getTracer() apitrace.Tracer {
 	return (*instance.tracerProvider).Tracer(instance.tracerName())
 }
 
+// NewAgent creates a standalone agent (without a workflow)
+func (instance *Traceloop) NewAgent(ctx context.Context, name string, agentAttrs AgentAttributes) *Agent {
+	aCtx, span := instance.getTracer().Start(ctx, fmt.Sprintf("%s.agent", name), apitrace.WithNewRoot())
+
+	attrs := []attribute.KeyValue{
+		semconvai.TraceloopSpanKind.String(string(semconvai.SpanKindAgent)),
+		semconvai.TraceloopEntityName.String(name),
+		semconvai.LLMAgentName.String(name),
+	}
+
+	if agentAttrs.ABTest != nil {
+		if agentAttrs.AssociationProperties == nil {
+			agentAttrs.AssociationProperties = make(map[string]string)
+		}
+		for key, activeVariant := range agentAttrs.ABTest.VariantKeys {
+			if activeVariant {
+				agentAttrs.AssociationProperties["ab_testing_variant"] = key
+				break
+			}
+		}
+	}
+
+	// Add association properties if provided
+	for key, value := range agentAttrs.AssociationProperties {
+		attrs = append(attrs, attribute.String("traceloop.association.properties."+key, value))
+	}
+
+	span.SetAttributes(attrs...)
+
+	return &Agent{
+		sdk:        instance,
+		workflow:   nil,
+		ctx:        aCtx,
+		Attributes: agentAttrs,
+	}
+}
+
 // New workflow-based API
-func (instance *Traceloop) LogPrompt(ctx context.Context, prompt Prompt, workflowAttrs WorkflowAttributes) (LLMSpan, error) {
+func (instance *Traceloop) LogPrompt(ctx context.Context, prompt Prompt, contextAttrs ContextAttributes) LLMSpan {
 	spanName := fmt.Sprintf("%s.%s", prompt.Vendor, prompt.Mode)
 	_, span := instance.getTracer().Start(ctx, spanName)
 
@@ -153,11 +186,18 @@ func (instance *Traceloop) LogPrompt(ctx context.Context, prompt Prompt, workflo
 		semconvai.LLMVendor.String(prompt.Vendor),
 		semconvai.LLMRequestModel.String(prompt.Model),
 		semconvai.LLMRequestType.String(prompt.Mode),
-		semconvai.TraceloopWorkflowName.String(workflowAttrs.Name),
 	}
 
-	// Add association properties if provided
-	for key, value := range workflowAttrs.AssociationProperties {
+	if contextAttrs.WorkflowName != nil {
+		attrs = append(attrs, semconvai.TraceloopWorkflowName.String(*contextAttrs.WorkflowName))
+	}
+
+	if contextAttrs.AgentName != nil {
+		attrs = append(attrs, semconvai.LLMAgentName.String(*contextAttrs.AgentName))
+	}
+
+	// Add association properties
+	for key, value := range contextAttrs.AssociationProperties {
 		attrs = append(attrs, attribute.String("traceloop.association.properties."+key, value))
 	}
 
@@ -167,21 +207,53 @@ func (instance *Traceloop) LogPrompt(ctx context.Context, prompt Prompt, workflo
 
 	return LLMSpan{
 		span: span,
-	}, nil
+	}
 }
 
-func (llmSpan *LLMSpan) LogCompletion(ctx context.Context, completion Completion, usage Usage) error {
-	llmSpan.span.SetAttributes(
-		semconvai.LLMResponseModel.String(completion.Model),
-		semconvai.LLMUsageTotalTokens.Int(usage.TotalTokens),
-		semconvai.LLMUsageCompletionTokens.Int(usage.CompletionTokens),
-		semconvai.LLMUsagePromptTokens.Int(usage.PromptTokens),
-	)
+// LogToolCall logs a tool call with the specified name
+func (instance *Traceloop) LogToolCall(ctx context.Context, attrs ToolCallAttributes, workflowAttrs WorkflowAttributes) LLMSpan {
+	spanName := fmt.Sprintf("%s.tool", attrs.Name)
+	_, span := instance.getTracer().Start(ctx, spanName)
 
-	setMessagesAttribute(llmSpan.span, "llm.completions", completion.Messages)
+	spanAttrs := []attribute.KeyValue{
+		semconvai.TraceloopWorkflowName.String(workflowAttrs.Name),
+		semconvai.TraceloopSpanKind.String(string(semconvai.SpanKindTool)),
+		semconvai.TraceloopEntityName.String(attrs.Name),
+	}
 
-	defer llmSpan.span.End()
-	return nil
+	// Add association properties if provided
+	for key, value := range workflowAttrs.AssociationProperties {
+		spanAttrs = append(spanAttrs, attribute.String("traceloop.association.properties."+key, value))
+	}
+
+	span.SetAttributes(spanAttrs...)
+
+	return LLMSpan{
+		span: span,
+	}
+}
+
+// LogAgent logs an agent with the specified name
+func (instance *Traceloop) LogAgent(ctx context.Context, attrs AgentAttributes, workflowAttrs WorkflowAttributes) LLMSpan {
+	spanName := fmt.Sprintf("%s.agent", attrs.Name)
+	_, span := instance.getTracer().Start(ctx, spanName)
+
+	spanAttrs := []attribute.KeyValue{
+		semconvai.TraceloopWorkflowName.String(workflowAttrs.Name),
+		semconvai.TraceloopSpanKind.String(string(semconvai.SpanKindAgent)),
+		semconvai.LLMAgentName.String(attrs.Name),
+	}
+
+	// Add association properties if provided
+	for key, value := range workflowAttrs.AssociationProperties {
+		spanAttrs = append(spanAttrs, attribute.String("traceloop.association.properties."+key, value))
+	}
+
+	span.SetAttributes(spanAttrs...)
+
+	return LLMSpan{
+		span: span,
+	}
 }
 
 func (instance *Traceloop) Shutdown(ctx context.Context) {
