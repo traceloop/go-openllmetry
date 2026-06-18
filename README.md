@@ -63,16 +63,22 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"os"
 
 	sdk "github.com/traceloop/go-openllmetry/traceloop-sdk"
 )
 
 func main() {
-    ctx := context.Background()
+	ctx := context.Background()
 
-    traceloop := sdk.NewClient(ctx, sdk.Config{
+	traceloop, err := sdk.NewClient(ctx, sdk.Config{
 		APIKey: os.Getenv("TRACELOOP_API_KEY"),
 	})
+	if err != nil {
+		fmt.Printf("NewClient error: %v\n", err)
+		return
+	}
 	defer func() { traceloop.Shutdown(ctx) }()
 }
 ```
@@ -126,81 +132,76 @@ func main() {
 	ctx := context.Background()
 
 	// Initialize Traceloop
-	traceloop := sdk.NewClient(ctx, config.Config{
-		APIKey:  os.Getenv("TRACELOOP_API_KEY"),
+	traceloop, err := sdk.NewClient(ctx, sdk.Config{
+		APIKey: os.Getenv("TRACELOOP_API_KEY"),
 	})
+	if err != nil {
+		fmt.Printf("NewClient error: %v\n", err)
+		return
+	}
 	defer func() { traceloop.Shutdown(ctx) }()
 
-	// Call OpenAI like you normally would
-	resp, err := client.CreateChatCompletion(
-		context.Background(),
-		openai.ChatCompletionRequest{
-			Model: openai.GPT3Dot5Turbo,
-			Messages: []openai.ChatCompletionMessage{
-				{
-					Role:    openai.ChatMessageRoleUser,
-					Content: "Tell me a joke about OpenTelemetry!",
-				},
+	// Build the request you'd normally send to OpenAI
+	request := openai.ChatCompletionRequest{
+		Model: openai.GPT3Dot5Turbo,
+		Messages: []openai.ChatCompletionMessage{
+			{
+				Role:    openai.ChatMessageRoleUser,
+				Content: "Tell me a joke about OpenTelemetry!",
 			},
+		},
+	}
+
+	var promptMsgs []sdk.Message
+	for i, message := range request.Messages {
+		promptMsgs = append(promptMsgs, sdk.Message{
+			Index:   i,
+			Content: message.Content,
+			Role:    message.Role,
+		})
+	}
+
+	// Log the request
+	workflowName := "example-workflow"
+	llmSpan := traceloop.LogPrompt(
+		ctx,
+		sdk.Prompt{
+			Vendor:   "openai",
+			Mode:     "chat",
+			Model:    request.Model,
+			Messages: promptMsgs,
+		},
+		sdk.ContextAttributes{
+			WorkflowName: &workflowName,
 		},
 	)
 
-    var promptMsgs []sdk.Message
-    for i, message := range request.Messages {
-    	promptMsgs = append(promptMsgs, sdk.Message{
-    		Index:   i,
-    		Content: message.Content,
-    		Role:    message.Role,
-    	})
-    }
+	// Call OpenAI like you normally would
+	client := openai.NewClient(os.Getenv("OPENAI_API_KEY"))
+	resp, err := client.CreateChatCompletion(ctx, request)
+	if err != nil {
+		fmt.Printf("ChatCompletion error: %v\n", err)
+		return
+	}
 
-	// Log the request
-    llmSpan, err := traceloop.LogPrompt(
-    	ctx,
-    	sdk.Prompt{
-    		Vendor: "openai",
-    		Mode:   "chat",
-    		Model: request.Model,
-    		Messages: promptMsgs,
-    	},
-    	sdk.TraceloopAttributes{
-    		WorkflowName: "example-workflow",
-    		EntityName:   "example-entity",
-    	},
-    )
-    if err != nil {
-    	fmt.Printf("LogPrompt error: %v\n", err)
-    	return
-    }
-
-    client := openai.NewClient(os.Getenv("OPENAI_API_KEY"))
-    resp, err := client.CreateChatCompletion(
-    	context.Background(),
-    	*request,
-    )
-    if err != nil {
-    	fmt.Printf("ChatCompletion error: %v\n", err)
-    	return
-    }
-
-    var completionMsgs []sdk.Message
-    for _, choice := range resp.Choices {
-    	completionMsgs = append(completionMsgs, sdk.Message{
-    		Index:   choice.Index,
-    		Content: choice.Message.Content,
-    		Role:    choice.Message.Role,
-    	})
-    }
+	var completionMsgs []sdk.Message
+	for _, choice := range resp.Choices {
+		completionMsgs = append(completionMsgs, sdk.Message{
+			Index:   choice.Index,
+			Content: choice.Message.Content,
+			Role:    choice.Message.Role,
+		})
+	}
 
 	// Log the response
-    llmSpan.LogCompletion(ctx, sdk.Completion{
-    	Model:    resp.Model,
-    	Messages: completionMsgs,
-    }, sdk.Usage{
-    	TotalTokens:       resp.Usage.TotalTokens,
-    	CompletionTokens:  resp.Usage.CompletionTokens,
-    	PromptTokens:      resp.Usage.PromptTokens,
-    })
+	llmSpan.LogCompletion(ctx, sdk.Completion{
+		Model:    resp.Model,
+		Messages: completionMsgs,
+	}, sdk.Usage{
+		TotalTokens:      resp.Usage.TotalTokens,
+		CompletionTokens: resp.Usage.CompletionTokens,
+		PromptTokens:     resp.Usage.PromptTokens,
+	})
 }
 ```
 
